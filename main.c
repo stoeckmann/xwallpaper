@@ -45,7 +45,7 @@ pledge(const char *promises, const char *paths[])
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: xsetwallpaper [-cfmstv] [-S screen] file\n");
+	fprintf(stderr, "usage: xsetwallpaper [-cstvzZ] [-S screen] file\n");
 	exit(1);
 }
 
