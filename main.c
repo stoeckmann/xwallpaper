@@ -330,7 +330,7 @@ main(int argc, char *argv[])
 
 	/* open before pledging that no further files are opened */
 	if ((fp = fopen(argv[0], "r")) == NULL)
-		err(1, "failed to open %s\n", argv[0]);
+		err(1, "failed to open %s", argv[0]);
 
 	pledge("dns inet stdio unix", NULL);
 
