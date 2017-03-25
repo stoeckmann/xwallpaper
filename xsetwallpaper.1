@@ -1,0 +1,63 @@
+.\" Copyright (c) 2017 Tobias Stoeckmann <tobias@stoeckmann.org>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.TH XSETWALLPAPER 1 "xsetwallpaper 0.1.0" "XSETWALLPAPER"
+.SH NAME
+xsetwallpaper \- wallpaper setting utility for X
+.SH SYNOPSIS
+.B xsetwallpaper
+[-cstvzZ] [-S screen] file
+.SH DESCRIPTION
+The
+.I xsetwallpaper
+program allows you to set an image file as your X wallpaper. PNG file format
+is supported by default and preferred, but optional JPEG support exists as well.
+.PP
+The wallpaper is also advertised to programs which support semi-transparent
+backgrounds.
+.SH OPTIONS
+.PP
+The various options are as follows:
+.IP \fB-c\fP
+Centers the input file on the screen. If the dimensions of the input file are
+smaller than the screen dimensions, the remaining area is filled black. If the
+input file dimensions are too large, parts of the image will be cropped.
+.IP \fB-s\fP
+Stretches input file to fully cover the screen. If the aspect ratio of the
+input file does not match the screen, then the ratio of the input file is
+adjusted.
+.IP "\fB-S\fP \fIscreen\fP
+Specifies a screen by its screen number. Normally all screens of an X display
+are processed. Using this option overrides the behaviour and only one screen
+will be modified. If the screen could not be found, nothing happens.
+.IP \fB-t\fP
+Uses tiling mode. Draws the input file at the upper left corner of the screen
+and repeats the image until the remaining area of the screen is covered.
+.IP \fB-v\fP
+Prints version and exits.
+.IP \fB-z\fP
+Zooms input file to fit screen without cropping. This could mean zooming in or
+out, depending on the dimensions of the input file and the screen. This option
+guarantees that the whole image is seen. If the ratio does not fit the screen,
+the remaining area is filled black. The image itself will be centered on screen.
+.IP \fB-Z\fP
+Zooms input file to fit screen with cropping. This could mean zooming in or out,
+depending on the dimensions of the input file and the screen. If the ratio
+does not fit the screen, parts of the input file will not be shown. The image
+itself will be centered on screen. Default behaviour if no option was selected.
+.PP
+If multiple contradicting options were given, the last supplied option wins.
+.SH BUGS
+Use the GitHub issue tracker: https://github.com/stoeckmann/xsetwallpaper/issues
+.SH AUTHOR
+Tobias Stoeckmann <tobias@stoeckmann.org>
