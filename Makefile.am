@@ -2,7 +2,7 @@ dist_man_MANS = xsetwallpaper.1
 
 bin_PROGRAMS = xsetwallpaper
 
-EXTRA_DIST = README.md
+EXTRA_DIST = LICENSE README.md
 
 xsetwallpaper_SOURCES = functions.h load_png.c main.c util.c
 xsetwallpaper_CPPFLAGS = @PIXMAN_CFLAGS@ @PNG_CFLAGS@ @XCB_CFLAGS@ 
