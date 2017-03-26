@@ -332,7 +332,7 @@ main(int argc, char *argv[])
 	if ((fp = fopen(argv[0], "r")) == NULL)
 		err(1, "failed to open %s", argv[0]);
 
-	pledge("dns inet stdio unix", NULL);
+	pledge("dns inet rpath stdio unix", NULL);
 
 	c = xcb_connect(NULL, NULL);
 
