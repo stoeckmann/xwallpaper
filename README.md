@@ -1,6 +1,6 @@
 # xsetwallpaper
 
-The xsetwallpaper utility allows you to set an image file as your X wallpaper.
+The xsetwallpaper utility allows you to set image files as your X wallpaper.
 PNG file format is supported by default and preferred, but optional JPEG
 support exists as well.
 
