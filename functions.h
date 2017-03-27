@@ -53,6 +53,7 @@ struct wp_output {
 };
 typedef struct wp_output wp_output_t;
 
+void		 free_outputs(wp_output_t *);
 wp_output_t	*get_output(wp_output_t *, char *);
 wp_output_t	*get_outputs(xcb_connection_t *c, xcb_screen_t *);
 pixman_image_t	*load_png(FILE *);

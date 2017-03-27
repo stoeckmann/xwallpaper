@@ -28,6 +28,16 @@
 
 #include "functions.h"
 
+void
+free_outputs(wp_output_t *outputs)
+{
+	wp_output_t *output;
+
+	for (output = outputs; output->name != NULL; output++)
+		free(output->name);
+	free(outputs);
+}
+
 wp_output_t *
 get_output(wp_output_t *outputs, char *name)
 {

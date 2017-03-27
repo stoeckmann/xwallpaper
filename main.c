@@ -319,9 +319,8 @@ static void
 process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
     wp_option_t *options)
 {
-	wp_output_t tile_output;
+	wp_output_t *outputs, tile_output;
 	wp_option_t *option;
-	wp_output_t *outputs;
 	uint16_t width, height;
 	xcb_image_t *xcb_image;
 	uint32_t *pixels;
@@ -377,6 +376,8 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 	free(pixels);
 	pixman_image_unref(tmp);
 	xcb_image_destroy(xcb_image);
+	if (outputs != &tile_output)
+		free_outputs(outputs);
 }
 
 int
