@@ -60,7 +60,8 @@ add_option(wp_option_t **opts, size_t *count, wp_option_t opt)
 		return;
 
 	for (i = 0; i < *count; i++)
-		if (strcmp((*opts)[i].output, opt.output) == 0 &&
+		if ((*opts)[i].output != NULL &&
+		    strcmp((*opts)[i].output, opt.output) == 0 &&
 		    (*opts)[i].screen == opt.screen)
 			break;
 
