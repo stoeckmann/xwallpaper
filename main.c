@@ -403,6 +403,8 @@ main(int argc, char *argv[])
 
 	load_pixman_images(options);
 
+	init_outputs(c);
+
 	it = xcb_setup_roots_iterator(xcb_get_setup(c));
 	for (snum = 0; it.rem; snum++, xcb_screen_next(&it))
 		process_screen(c, it.data, snum, options);

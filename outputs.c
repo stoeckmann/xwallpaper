@@ -28,6 +28,8 @@
 
 #include "functions.h"
 
+static int has_randr;
+
 void
 free_outputs(wp_output_t *outputs)
 {
@@ -50,12 +52,12 @@ get_output(wp_output_t *outputs, char *name)
 	return output;
 }
 
-wp_output_t *
-get_outputs(xcb_connection_t *c, xcb_screen_t *screen)
+#ifdef WITH_RANDR
+static wp_output_t *
+get_randr_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 {
 	wp_output_t *outputs;
 	int len;
-#ifdef WITH_RANDR
 	xcb_randr_get_screen_resources_cookie_t resources_cookie;
 	xcb_randr_get_screen_resources_reply_t *resources_reply;
 	xcb_randr_output_t *xcb_outputs;
@@ -113,12 +115,6 @@ get_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 		outputs[i].width = crtc_reply->width;
 		outputs[i].height = crtc_reply->height;
 	}
-#else
-	outputs = malloc(sizeof(*outputs));
-	if (outputs == NULL)
-		errx(1, "failed to allocate memory");
-	len = 0;
-#endif /* WITH_RANDR */
 
 	outputs[len].name = NULL;
 	outputs[len].x = 0;
@@ -127,4 +123,38 @@ get_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 	outputs[len].height = screen->height_in_pixels;
 
 	return outputs;
+}
+#endif /* WITH_RANDR */
+
+wp_output_t *
+get_outputs(xcb_connection_t *c, xcb_screen_t *screen)
+{
+	wp_output_t *outputs;
+
+#ifdef WITH_RANDR
+	if (has_randr)
+		return get_randr_outputs(c, screen);
+#endif /* WITH_RANDR */
+
+	if ((outputs = malloc(sizeof(*outputs))) == NULL)
+		errx(1, "failed to allocate memory");
+
+	outputs[0].name = NULL;
+	outputs[0].x = 0;
+	outputs[0].y = 0;
+	outputs[0].width = screen->width_in_pixels;
+	outputs[0].height = screen->height_in_pixels;
+
+	return outputs;
+}
+
+void
+init_outputs(xcb_connection_t *c)
+{
+#ifdef WITH_RANDR
+	const xcb_query_extension_reply_t *reply;
+
+	reply = xcb_get_extension_data(c, &xcb_randr_id);
+	has_randr = reply != NULL && reply->present;
+#endif /* WITH_RANDR */
 }
