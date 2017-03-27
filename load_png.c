@@ -97,4 +97,3 @@ load_png(FILE *fp)
 
 	return img;
 }
-

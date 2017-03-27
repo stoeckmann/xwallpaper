@@ -118,4 +118,3 @@ get_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 
 	return outputs;
 }
-

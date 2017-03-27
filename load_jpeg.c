@@ -77,4 +77,3 @@ load_jpeg(FILE *fp)
 
 	return img;
 }
-

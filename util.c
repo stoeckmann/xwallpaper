@@ -35,4 +35,3 @@ xmalloc(size_t n, size_t m, size_t size)
 
 	return p;
 }
-

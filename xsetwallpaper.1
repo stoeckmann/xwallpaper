@@ -11,16 +11,15 @@
 .\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-.TH XSETWALLPAPER 1 "xsetwallpaper 0.1.1" "XSETWALLPAPER"
+.TH XSETWALLPAPER 1 "xsetwallpaper 0.2.0" "XSETWALLPAPER"
 .SH NAME
 xsetwallpaper \- wallpaper setting utility for X
 .SH SYNOPSIS
-.B xsetwallpaper
-[-cstvzZ] [-S screen] file
+.B xsetwallpaper [--screen <screen>] [--output <output>] [--center <file>] [--maximize <file>] [--stretch <file>] [--tile <file>] [--zoom <file>] [--version]
 .SH DESCRIPTION
 The
 .I xsetwallpaper
-program allows you to set an image file as your X wallpaper. PNG file format
+program allows you to set image files as your X wallpaper. PNG file format
 is supported by default and preferred, but optional JPEG support exists as well.
 .PP
 The wallpaper is also advertised to programs which support semi-transparent
@@ -28,35 +27,65 @@ backgrounds.
 .SH OPTIONS
 .PP
 The various options are as follows:
-.IP \fB-c\fP
+.IP "\fB--center \fP \fIfile\fP
 Centers the input file on the screen. If the dimensions of the input file are
 smaller than the screen dimensions, the remaining area is filled black. If the
 input file dimensions are too large, parts of the image will be cropped.
-.IP \fB-s\fP
+.IP "\fB--maximize \fP \fIfile\fP
+Maximizes input file to fit screen without cropping. This could mean zooming in
+or out, depending on the dimensions of the input file and the screen. This
+option guarantees that the whole image is seen. If the ratio does not fit the
+screen, the remaining area is filled black. The image itself will be centered
+on screen.
+.IP "\fB--output \fP \fIoutput\fP
+Specifies the output on which a subsequently supplied file shall be set as
+wallpaper. You can retrieve a list of outputs on your system by executing
+\fIxrandr(1)\fP. If no output is specified, the virtual desktop will be used,
+which is the maximum area spaning across the different outputs (monitors).
+The special keyword \fIall\fP will repeat subsequent actions on all displays.
+.IP "\fB--screen \fP \fIscreen\fP
+Specifies a screen by its screen number. Normally all screens of an X display
+are processed. Please note that a screen is not a single monitor. See
+\fI\-\-output\fP for such a use case above. If the screen could not be found,
+nothing happens.
+.IP "\fB--stretch \fP \fIfile\fP
 Stretches input file to fully cover the screen. If the aspect ratio of the
 input file does not match the screen, then the ratio of the input file is
 adjusted.
-.IP "\fB-S\fP \fIscreen\fP
-Specifies a screen by its screen number. Normally all screens of an X display
-are processed. Using this option overrides the behaviour and only one screen
-will be modified. If the screen could not be found, nothing happens.
-.IP \fB-t\fP
+.IP "\fB--tile \fP \fIfile\fP
 Uses tiling mode. Draws the input file at the upper left corner of the screen
 and repeats the image until the remaining area of the screen is covered.
-.IP \fB-v\fP
+.IP "\fB--version\fP
 Prints version and exits.
-.IP \fB-z\fP
-Zooms input file to fit screen without cropping. This could mean zooming in or
-out, depending on the dimensions of the input file and the screen. This option
-guarantees that the whole image is seen. If the ratio does not fit the screen,
-the remaining area is filled black. The image itself will be centered on screen.
-.IP \fB-Z\fP
+.IP "\fB--zoom \fP \fIfile\fP
 Zooms input file to fit screen with cropping. This could mean zooming in or out,
 depending on the dimensions of the input file and the screen. If the ratio
 does not fit the screen, parts of the input file will not be shown. The image
 itself will be centered on screen. Default behaviour if no option was selected.
 .PP
 If multiple contradicting options were given, the last supplied option wins.
+It is also possible to repeat output arguments without any subsequent files.
+In that case, the last mode and file will be re-used.
+.SH EXAMPLES
+Centers a PNG file as a wallpaper on LVDS1:
+.RS
+xsetwallpaper --output LVDS1 --center file.png
+.RE
+.PP
+Tiles a PNG file as a wallpaper across all outputs:
+.RS
+xsetwallpaper --tile file.png
+.RE
+.PP
+Zooms into a JPEG file as a wallpaper on each output individually:
+.RS
+xsetwallpaper --zoom all --tile file.jpg
+.RE
+.PP
+Tiles a JPEG file as a wallpaper on VGA1 and zooms into a PNG file on LVDS1:
+.RS
+xsetwallpaper --output VGA1 --tile file.jpg --output LVDS1 --zoom file.png
+.RE
 .SH BUGS
 Use the GitHub issue tracker: https://github.com/stoeckmann/xsetwallpaper/issues
 .SH AUTHOR

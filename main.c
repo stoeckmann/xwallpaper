@@ -18,7 +18,6 @@
 #include <xcb/xcb_image.h>
 
 #include <err.h>
-#include <limits.h>
 #include <pixman.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,25 +27,26 @@
 #include "config.h"
 #include "functions.h"
 
-#define MODE_CENTER	1
-#define MODE_SCALE	2
-#define MODE_TILE	3
-#define MODE_ZOOM	4
-#define MODE_ZOOM_CROP	5
-
-#ifndef HAVE_PLEDGE
-int
-pledge(const char *promises, const char *paths[])
-{
-	return 0;
-}
-#endif
-
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: xsetwallpaper [-cstvzZ] [-S screen] file\n");
+	fprintf(stderr,
+"usage: xsetwallpaper [-screen <screen>] [--output <output>]\n"
+"  [--center <file>] [--maximize <file>]  [--stretch <file>]\n"
+"  [--tile <file>] [--zoom <file>] [--version]\n");
 	exit(1);
+}
+
+static int
+check_dimensions(pixman_image_t *pixman_image)
+{
+	int width, height;
+
+	width = pixman_image_get_width(pixman_image);
+	height = pixman_image_get_height(pixman_image);
+
+	return (width < 1 || width > UINT16_MAX ||
+	    height < 1 || height > UINT16_MAX);
 }
 
 static void
@@ -99,8 +99,48 @@ create_xcb_image(xcb_connection_t *c, uint16_t width, uint16_t height,
 }
 
 static void
-transform(xcb_image_t *xcb_image, pixman_image_t *pixman_image, int mode)
+tile(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 {
+	pixman_image_t *pixman_image;
+	int pixman_width, pixman_height;
+	uint16_t off_x, off_y;
+
+	pixman_image = option->buffer->pixman_image;
+	pixman_width = pixman_image_get_width(pixman_image);
+	pixman_height = pixman_image_get_height(pixman_image);
+
+	/*
+	 * Manually performs tiling to support separate modes per
+	 * screen with RandR. If possible, xsetwallpaper will let
+	 * X do the tiling natively.
+         */
+	for (off_y = 0; off_y < output->height; off_y += pixman_height) {
+		uint16_t h;
+
+		if (off_y + pixman_height > output->height)
+			h = output->height - off_y;
+		else
+			h = pixman_height;
+
+		for (off_x = 0; off_x < output->width; off_x += pixman_width) {
+			uint16_t w;
+
+			if (off_x + pixman_width > output->width)
+				w = output->width - off_x;
+			else
+				w = pixman_width;
+
+			pixman_image_composite(PIXMAN_OP_CONJOINT_SRC,
+			    pixman_image, NULL, dest, 0, 0, 0, 0,
+			    output->x + off_x, output->y + off_y, w, h);
+		}
+	}
+}
+
+static void
+transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
+{
+	pixman_image_t *pixman_image;
 	pixman_f_transform_t ftransform;
 	pixman_transform_t transform;
 	int pixman_width, pixman_height;
@@ -108,25 +148,26 @@ transform(xcb_image_t *xcb_image, pixman_image_t *pixman_image, int mode)
 	float w_scale, h_scale, scale;
 	float translate_x, translate_y;
 
+	pixman_image = option->buffer->pixman_image;
 	pixman_width = pixman_image_get_width(pixman_image);
 	pixman_height = pixman_image_get_height(pixman_image);
-	xcb_width = xcb_image->width;
-	xcb_height = xcb_image->height;
+	xcb_width = output->width;
+	xcb_height = output->height;
 
 	w_scale = (float)pixman_width / xcb_width;
 	h_scale = (float)pixman_height / xcb_height;
 
-	switch (mode) {
+	switch (option->mode) {
 		case MODE_CENTER:
 			w_scale = 1;
 			h_scale = 1;
 			break;
-		case MODE_ZOOM:
+		case MODE_MAXIMIZE:
 			scale = w_scale < h_scale ? h_scale : w_scale;
 			w_scale = scale;
 			h_scale = scale;
 			break;
-		case MODE_ZOOM_CROP:
+		case MODE_ZOOM:
 			scale = w_scale > h_scale ? h_scale : w_scale;
 			w_scale = scale;
 			h_scale = scale;
@@ -144,38 +185,9 @@ transform(xcb_image_t *xcb_image, pixman_image_t *pixman_image, int mode)
 
 	pixman_transform_from_pixman_f_transform(&transform, &ftransform);
 	pixman_image_set_transform(pixman_image, &transform);
-}
 
-static void
-insert_pixman(xcb_image_t *xcb_image, pixman_image_t *pixman_image, int mode)
-{
-	uint16_t width, height;
-	uint32_t *pixels;
-
-	width = xcb_image->width;
-	height = xcb_image->height;
-
-	if (mode == MODE_TILE) {
-		pixels = pixman_image_get_data(pixman_image);
-		copy_pixels(xcb_image, pixels, width, height);
-	} else {
-		pixman_image_t *tmp;
-
-		pixels = xmalloc(width, height, sizeof(*pixels));
-
-		tmp = pixman_image_create_bits(PIXMAN_a8r8g8b8, width, height,
-		    pixels, width * sizeof(*pixels));
-		if (tmp == NULL)
-			errx(1, "failed to create temporary pixman image");
-		transform(xcb_image, pixman_image, mode);
-		pixman_image_composite(PIXMAN_OP_SRC, pixman_image, NULL, tmp,
-		    0, 0, 0, 0, 0, 0, width, height);
-
-		copy_pixels(xcb_image, pixels, width, height);
-
-		free(pixels);
-		pixman_image_unref(tmp);
-	}
+	pixman_image_composite(PIXMAN_OP_CONJOINT_SRC, pixman_image, NULL, dest,
+	    0, 0, 0, 0, output->x, output->y, output->width, output->height);
 }
 
 static pixman_image_t *
@@ -194,16 +206,32 @@ load_pixman_image(FILE *fp)
 	return pixman_image;
 }
 
-static int
-parse_screen_number(char *s)
+static void
+load_pixman_images(wp_option_t *options)
 {
-	char *endptr;
-	long int value;
+	wp_option_t *option;
 
-	value = strtol(s, &endptr, 10);
-	if (endptr == s || *endptr != '\0' || value < 0 || value > INT_MAX)
-		errx(1, "failed to parse screen number: %s", optarg);
-	return value;
+	for (option = options; option->filename != NULL; option++) {
+		wp_buffer_t *buffer;
+
+		buffer = option->buffer;
+		if (buffer->pixman_image == NULL) {
+			buffer->pixman_image = load_pixman_image(buffer->fp);
+			fclose(buffer->fp);
+			if (check_dimensions(buffer->pixman_image))
+				errx(1, "%s has illegal dimensions",
+				    option->filename);
+		}
+	}
+}
+
+static void
+process_output(wp_output_t *output, pixman_image_t *tmp, wp_option_t *option)
+{
+	if (option->mode == MODE_TILE)
+		tile(tmp, output, option);
+	else
+		transform(tmp, output, option);
 }
 
 static void
@@ -272,108 +300,114 @@ set_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, xcb_image_t *xcb_image)
 	set_atom("_XROOTPMAP_ID", pixmap, c, screen);
 }
 
-static void
-validate_dimensions(pixman_image_t *pixman_image)
+static int
+check_x_tiling(wp_option_t *options)
 {
-	int width, height;
+	wp_option_t *option;
+	size_t n;
 
-	width = pixman_image_get_width(pixman_image);
-	height = pixman_image_get_height(pixman_image);
-	if (width < 1 || width > UINT16_MAX ||
-	    height < 1 || height > UINT16_MAX)
-		errx(1, "image is too large");
+	for (n = 0, option = options; option->filename != NULL; option++, n++)
+		if (option->mode != MODE_TILE)
+			return 0;
+	if (n > 1)
+		return 0;
+
+	return options->output == NULL;
+}
+
+static void
+process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
+    wp_option_t *options)
+{
+	wp_output_t tile_output;
+	wp_option_t *option;
+	wp_output_t *outputs;
+	uint16_t width, height;
+	xcb_image_t *xcb_image;
+	uint32_t *pixels;
+	pixman_image_t *tmp;
+
+	/* if possible, let X do the tiling */
+	if (check_x_tiling(options)) {
+		pixman_image_t *pixman_image;
+
+		pixman_image = options->buffer->pixman_image;
+		width = pixman_image_get_width(pixman_image);
+		height = pixman_image_get_height(pixman_image);
+
+		/* fake an output that fits the picture */
+		tile_output.x = 0;
+		tile_output.y = 0;
+		tile_output.width = width;
+		tile_output.height = height;
+		tile_output.name = NULL;
+		outputs = &tile_output;
+	} else {
+		width = screen->width_in_pixels;
+		height = screen->height_in_pixels;
+		outputs = get_outputs(c, screen);
+	}
+	xcb_image = create_xcb_image(c, width, height, screen->root_depth);
+
+	pixels = xmalloc(width, height, sizeof(*pixels));
+	tmp = pixman_image_create_bits(PIXMAN_a8r8g8b8, width, height, pixels,
+	    width * sizeof(*pixels));
+	if (tmp == NULL)
+		errx(1, "failed to create temporary pixman image");
+
+	for (option = options; option->filename != NULL; option++) {
+		wp_output_t *output;
+
+		/* ignore options which are not relevant for this screen */
+		if (option->screen != -1 && option->screen != snum)
+			continue;
+
+		if (option->output != NULL &&
+		    strcmp(option->output, "all") == 0)
+			for (output = outputs; output->name != NULL; output++)
+				process_output(output, tmp, option);
+		else {
+			output = get_output(outputs, option->output);
+			process_output(output, tmp, option);
+		}
+	}
+	copy_pixels(xcb_image, pixels, width, height);
+	set_wallpaper(c, screen, xcb_image);
+
+	free(pixels);
+	pixman_image_unref(tmp);
+	xcb_image_destroy(xcb_image);
 }
 
 int
 main(int argc, char *argv[])
 {
-	FILE *fp;
-	pixman_image_t *pixman_image;
-	int ch, i, mode, screen_nbr;
+	wp_option_t *options;
 	xcb_connection_t *c;
-	const xcb_setup_t *setup;
 	xcb_screen_iterator_t it;
+	int snum;
 
-	mode = MODE_ZOOM_CROP;
-	screen_nbr = -1;
-	while ((ch = getopt(argc, argv, "csS:tvzZ")) != -1)
-		switch (ch) {
-		case 'c':
-			mode = MODE_CENTER;
-			break;
-		case 's':
-			mode = MODE_SCALE;
-			break;
-		case 'S':
-			screen_nbr = parse_screen_number(optarg);
-			break;
-		case 't':
-			mode = MODE_TILE;
-			break;
-		case 'v':
-			puts(VERSION);
-			return 0;
-		case 'z':
-			mode = MODE_ZOOM;
-			break;
-		case 'Z':
-			mode = MODE_ZOOM_CROP;
-			break;
-		default:
-			usage();
-		}
-	argv += optind;
-	argc -= optind;
-
-	if (argc != 1)
-		usage();
-
-	/* open before pledging that no further files are opened */
-	if ((fp = fopen(argv[0], "r")) == NULL)
-		err(1, "failed to open %s", argv[0]);
-
+#ifdef HAVE_PLEDGE
 	pledge("dns inet rpath stdio unix", NULL);
+#endif
+
+	if (argc < 2 || (options = parse_options(++argv)) == NULL)
+		usage();
 
 	c = xcb_connect(NULL, NULL);
 
+#ifdef HAVE_PLEDGE
 	pledge("stdio", NULL);
+#endif
 
-	pixman_image = load_pixman_image(fp);
+	load_pixman_images(options);
 
-	/* input file handle is not needed any longer */
-	fclose(fp);
-
-	validate_dimensions(pixman_image);
-
-	setup = xcb_get_setup(c);
-	it = xcb_setup_roots_iterator(setup);
-
-	for (i = 0; it.rem; i++, xcb_screen_next(&it))
-		if (screen_nbr == -1 || screen_nbr == i) {
-			uint16_t width, height;
-			uint8_t depth;
-			xcb_image_t *xcb_image;
-			xcb_screen_t *screen;
-
-			screen = it.data;
-			depth = screen->root_depth;
-			if (mode == MODE_TILE) {
-				width = pixman_image_get_width(pixman_image);
-				height = pixman_image_get_height(pixman_image);
-			} else {
-				width = screen->width_in_pixels;
-				height = screen->height_in_pixels;
-			}
-
-			xcb_image = create_xcb_image(c, width, height, depth);
-			insert_pixman(xcb_image, pixman_image, mode);
-			set_wallpaper(c, screen, xcb_image);
-			xcb_image_destroy(xcb_image);
-		}
+	it = xcb_setup_roots_iterator(xcb_get_setup(c));
+	for (snum = 0; it.rem; snum++, xcb_screen_next(&it))
+		process_screen(c, it.data, snum, options);
 
 	xcb_flush(c);
 	xcb_disconnect(c);
 
 	return 0;
 }
-
