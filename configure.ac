@@ -13,8 +13,8 @@ AC_PROG_CC
 AM_INIT_AUTOMAKE([foreign])
 
 # Check for pkg-config packages
-PKG_CHECK_MODULES(PIXMAN, [pixman-1 >= 0.34])
-PKG_CHECK_MODULES(PNG, [libpng >= 1.6])
+PKG_CHECK_MODULES(PIXMAN, [pixman-1 >= 0.32])
+PKG_CHECK_MODULES(PNG, [libpng >= 1.2])
 PKG_CHECK_MODULES(XCB, [xcb-image >= 0.4 xcb-util >= 0.4])
 
 # Check for OpenBSD's pledge(2)
@@ -35,7 +35,7 @@ AC_ARG_WITH([randr],
 )
 AC_MSG_RESULT($randr_support)
 if test "$randr_support" != no ; then
-  PKG_CHECK_MODULES(RANDR, xcb-randr >= 1.12, [randr_ok="yes"], [randr_ok="no"])
+  PKG_CHECK_MODULES(RANDR, xcb-randr >= 1.11, [randr_ok="yes"], [randr_ok="no"])
 else
   randr_ok="no"
 fi
