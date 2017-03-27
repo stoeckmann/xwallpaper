@@ -23,7 +23,7 @@ AC_CHECK_FUNCS([pledge])
 # Check if RandR support is requested
 AC_MSG_CHECKING(whether RandR support is requested)
 AC_ARG_WITH([randr],
-  [AS_HELP_STRING([--without-randr], [Disable RandR support])],
+  [AS_HELP_STRING([--without-randr], [disable RandR support])],
   [
    if test "$withval" = no ; then
      randr_support=no
@@ -47,7 +47,7 @@ AM_CONDITIONAL(BUILD_RANDR, [test "$randr_ok" = yes])
 # Check if JPEG support is requested
 AC_MSG_CHECKING(whether JPEG support is requested)
 AC_ARG_WITH([jpeg],
-  [AS_HELP_STRING([--without-jpeg], [Disable JPEG support])],
+  [AS_HELP_STRING([--without-jpeg], [disable JPEG support])],
   [
    if test "$withval" = no ; then
      jpeg_support=no
