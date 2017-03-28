@@ -252,7 +252,6 @@ update_atoms(xcb_connection_t *c, xcb_screen_t *screen, xcb_pixmap_t pixmap)
 static void
 set_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, xcb_image_t *xcb_image)
 {
-	uint32_t gc_values[2];
 	xcb_pixmap_t pixmap;
 	xcb_gcontext_t gc;
 
@@ -260,11 +259,8 @@ set_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, xcb_image_t *xcb_image)
 	xcb_create_pixmap(c, screen->root_depth, pixmap, screen->root,
 	    xcb_image->width, xcb_image->height);
 
-	gc_values[0] = screen->black_pixel;
-	gc_values[1] = screen->white_pixel;
 	gc = xcb_generate_id(c);
-	xcb_create_gc(c, gc, pixmap, XCB_GC_FOREGROUND | XCB_GC_BACKGROUND,
-	    gc_values);
+	xcb_create_gc(c, gc, pixmap, 0, NULL);
 
 	xcb_put_image(c, xcb_image->format, pixmap, gc, xcb_image->width,
 	    xcb_image->height, 0, 0, 0, screen->root_depth, xcb_image->size,
