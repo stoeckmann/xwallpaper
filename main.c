@@ -53,53 +53,6 @@ check_dimensions(pixman_image_t *pixman_image)
 }
 
 static void
-copy_pixels(xcb_image_t *img, uint32_t *pixels, uint16_t width, uint16_t height)
-{
-	size_t x, y;
-	uint32_t *p;
-
-	p = pixels;
-	for (y = 0; y < height; y++)
-		for (x = 0; x < width; x++)
-			xcb_image_put_pixel(img, x, y, *p++);
-}
-
-static xcb_format_t *
-get_format(xcb_connection_t *c, uint8_t depth, uint8_t bpp)
-{
-	const xcb_setup_t *setup;
-	xcb_format_t *formats;
-	int i, length;
-
-	setup = xcb_get_setup(c);
-	formats = xcb_setup_pixmap_formats(setup);
-	length = xcb_setup_pixmap_formats_length(setup);
-
-	for (i = 0; i < length; i++) 
-		if (formats[i].depth == depth &&
-		    formats[i].bits_per_pixel == bpp)
-			return &formats[i];
-
-	errx(1, "failed to get matching format");
-}
-
-static xcb_image_t *
-create_xcb_image(xcb_connection_t *c, uint16_t width, uint16_t height,
-    uint8_t depth)
-{
-	xcb_format_t *format;
-	xcb_image_t *image;
-
-	format = get_format(c, depth, 32);
-
-	image = xcb_image_create_native(c, width, height,
-	    XCB_IMAGE_FORMAT_Z_PIXMAP, format->depth, NULL, ~0, NULL);
-	image->data = xmalloc(image->stride, image->height, sizeof(uint8_t));
-
-	return image;
-}
-
-static void
 tile(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 {
 	pixman_image_t *pixman_image;
@@ -373,7 +326,6 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 		height = screen->height_in_pixels;
 		outputs = get_outputs(c, screen);
 	}
-	xcb_image = create_xcb_image(c, width, height, screen->root_depth);
 
 	pixels = xmalloc(width, height, sizeof(*pixels));
 	pixman_bits = pixman_image_create_bits(PIXMAN_a8r8g8b8, width, height,
@@ -398,12 +350,14 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 				process_output(output, pixman_bits, option);
 		}
 	}
-	copy_pixels(xcb_image, pixels, width, height);
+
+	xcb_image = xcb_image_create_native(c, width, height,
+	    XCB_IMAGE_FORMAT_Z_PIXMAP, 32, NULL,
+	    width * height * sizeof(*pixels), (uint8_t *) pixels);
 	set_wallpaper(c, screen, xcb_image);
 
 	free(pixels);
 	pixman_image_unref(pixman_bits);
-	free(xcb_image->data);
 	xcb_image_destroy(xcb_image);
 	if (outputs != &tile_output)
 		free_outputs(outputs);
