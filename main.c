@@ -402,6 +402,7 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 
 	free(pixels);
 	pixman_image_unref(tmp);
+	free(xcb_image->data);
 	xcb_image_destroy(xcb_image);
 	if (outputs != &tile_output)
 		free_outputs(outputs);
