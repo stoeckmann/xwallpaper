@@ -77,9 +77,7 @@ get_randr_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 	if (len < 1)
 		errx(1, "failed to retrieve randr outputs");
 
-	outputs = calloc(len + 1, sizeof(*outputs));
-	if (outputs == NULL)
-		errx(1, "failed to allocate memory");
+	outputs = xmalloc(len + 1, 1, sizeof(*outputs));
 
 	for (i = 0; i < len; i++) {
 		xcb_randr_get_output_info_cookie_t output_cookie;

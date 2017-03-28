@@ -85,9 +85,7 @@ init_buffers(wp_option_t *options, size_t options_count)
 	size_t buffers_count, i;
 	size_t *refs;
 
-	refs = calloc(options_count, sizeof(*refs));
-	if (refs == NULL)
-		err(1, "failed to allocate memory");
+	refs = xmalloc(options_count, 1, sizeof(*refs));
 
 	buffers = NULL;
 	buffers_count = 0;
