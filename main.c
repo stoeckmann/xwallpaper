@@ -84,18 +84,16 @@ static xcb_image_t *
 create_xcb_image(xcb_connection_t *c, uint16_t width, uint16_t height,
     uint8_t depth)
 {
-	uint8_t *data;
-	const xcb_setup_t *setup;
 	xcb_format_t *format;
+	xcb_image_t *image;
 
-	setup = xcb_get_setup(c);
 	format = get_format(c, depth, 32);
-	data = xmalloc(width, height, sizeof(uint32_t));
 
-	return xcb_image_create(width, height, XCB_IMAGE_FORMAT_Z_PIXMAP,
-	    format->scanline_pad, format->depth, format->bits_per_pixel, 0,
-	    setup->image_byte_order, XCB_IMAGE_ORDER_LSB_FIRST,
-	    data, width * height * sizeof(uint32_t), data);
+	image = xcb_image_create_native(c, width, height,
+	    XCB_IMAGE_FORMAT_Z_PIXMAP, format->depth, NULL, ~0, NULL);
+	image->data = xmalloc(image->stride, image->height, sizeof(uint8_t));
+
+	return image;
 }
 
 static void
