@@ -27,6 +27,9 @@
 #include "config.h"
 #include "functions.h"
 
+#define ATOM_ESETROOT "ESETROOT_PMAP_ID"
+#define ATOM_XSETROOT "_XROOTPMAP_ID"
+
 static void
 usage(void)
 {
@@ -238,34 +241,57 @@ process_output(wp_output_t *output, pixman_image_t *tmp, wp_option_t *option)
 }
 
 static void
-set_atom(char *name, xcb_pixmap_t pixmap, xcb_connection_t *c,
-    xcb_screen_t *screen)
+update_atoms(xcb_connection_t *c, xcb_screen_t *screen, xcb_pixmap_t pixmap)
 {
-	xcb_intern_atom_cookie_t atom_cookie;
-	xcb_intern_atom_reply_t *atom_reply;
+	int i;
+	xcb_intern_atom_cookie_t atom_cookie[2];
+	xcb_intern_atom_reply_t *atom_reply[2];
+	xcb_get_property_cookie_t property_cookie[2];
+	xcb_get_property_reply_t *property_reply[2];
+	xcb_pixmap_t *old[2];
 
-	atom_cookie = xcb_intern_atom_unchecked(c, 0, strlen(name), name);
-	atom_reply = xcb_intern_atom_reply(c, atom_cookie, NULL);
-	if (atom_reply != NULL) {
-		xcb_get_property_cookie_t property_cookie;
-		xcb_get_property_reply_t *property_reply;
+	atom_cookie[0] = xcb_intern_atom(c, 0,
+	    sizeof(ATOM_ESETROOT) - 1, ATOM_ESETROOT);
+	atom_cookie[1] = xcb_intern_atom(c, 0,
+	    sizeof(ATOM_XSETROOT) - 1, ATOM_XSETROOT);
 
-		property_cookie = xcb_get_property_unchecked(c, 0, screen->root,
-		    atom_reply->atom, XCB_ATOM_PIXMAP, 0, 1);
-		xcb_request_check(c, xcb_change_property(c,
-		    XCB_PROP_MODE_REPLACE, screen->root, atom_reply->atom,
-		    XCB_ATOM_PIXMAP, 32, 1, &pixmap));
-		property_reply = xcb_get_property_reply(c, property_cookie,
-		    NULL);
-		if (property_reply && property_reply->value_len) {
-			xcb_pixmap_t *old;
+	for (i = 0; i < 2; i++)
+		atom_reply[i] = xcb_intern_atom_reply(c, atom_cookie[i], NULL);
 
-			old = xcb_get_property_value(property_reply);
-			if (old != NULL)
-				xcb_request_check(c, xcb_kill_client(c, *old));
-		}
-		free(property_reply);
-		free(atom_reply);
+	for (i = 0; i < 2; i++) {
+		if (atom_reply[i] != NULL)
+			property_cookie[i] = xcb_get_property(c, 0,
+			    screen->root, atom_reply[i]->atom, XCB_ATOM_PIXMAP,
+			    0, 1);
+	}
+
+	for (i = 0; i < 2; i++) {
+		if (atom_reply[i] != NULL)
+			property_reply[i] =
+			    xcb_get_property_reply(c, property_cookie[i], NULL);
+		else
+			property_reply[i] = NULL;
+		if (property_reply[i] != NULL &&
+		    property_reply[i]->type == XCB_ATOM_PIXMAP)
+			old[i] = xcb_get_property_value(property_reply[i]);
+		else
+			old[i] = NULL;
+	}
+
+	if (old[0] != NULL)
+		xcb_kill_client(c, *old[0]);
+	if (old[1] != NULL && (old[0] == NULL || *old[0] != *old[1]))
+		xcb_kill_client(c, *old[1]);
+
+	for (i = 0; i < 2; i++) {
+		if (atom_reply[i] != NULL)
+			xcb_change_property(c, XCB_PROP_MODE_REPLACE,
+			    screen->root, atom_reply[i]->atom, XCB_ATOM_PIXMAP,
+			    32, 1, &pixmap);
+		else
+			warnx("failed to update atoms");
+		free(property_reply[i]);
+		free(atom_reply[i]);
 	}
 }
 
@@ -273,7 +299,6 @@ static void
 set_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, xcb_image_t *xcb_image)
 {
 	uint32_t gc_values[2];
-	uint32_t cw_values[1];
 	xcb_pixmap_t pixmap;
 	xcb_gcontext_t gc;
 
@@ -291,16 +316,14 @@ set_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, xcb_image_t *xcb_image)
 	    xcb_image->height, 0, 0, 0, screen->root_depth, xcb_image->size,
 	    xcb_image->data);
 
-	cw_values[0] = pixmap;
 	xcb_change_window_attributes(c, screen->root, XCB_CW_BACK_PIXMAP,
-	    cw_values);
+	    &pixmap);
+
+	update_atoms(c, screen, pixmap);
 
 	xcb_clear_area(c, 0, screen->root, 0, 0, 0, 0);
 	xcb_request_check(c,
 	    xcb_set_close_down_mode(c, XCB_CLOSE_DOWN_RETAIN_PERMANENT));
-
-	set_atom("ESETROOT_PMAP_ID", pixmap, c, screen);
-	set_atom("_XROOTPMAP_ID", pixmap, c, screen);
 }
 
 static int
