@@ -40,7 +40,7 @@ else
   randr_ok="no"
 fi
 AS_IF([test "$randr_ok" = yes],
-  [AC_DEFINE(WITH_RANDR,[],[With RandR support])],[]
+  [AC_DEFINE(WITH_RANDR,[],[Define to 1 if you want RandR support.])],[]
 )
 AM_CONDITIONAL(BUILD_RANDR, [test "$randr_ok" = yes])
 
@@ -64,7 +64,7 @@ else
   jpeg_ok="no"
 fi
 AS_IF([test "$jpeg_ok" = yes],
-  [AC_DEFINE(WITH_JPEG,[],[With JPEG support])],[]
+  [AC_DEFINE(WITH_JPEG,[],[Define to 1 if you want JPEG support.])],[]
 )
 AM_CONDITIONAL(BUILD_JPEG, [test "$jpeg_ok" = yes])
 
