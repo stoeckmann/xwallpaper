@@ -103,11 +103,18 @@ tile(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 {
 	pixman_image_t *pixman_image;
 	int pixman_width, pixman_height;
+	pixman_f_transform_t ftransform;
+	pixman_transform_t transform;
 	uint16_t off_x, off_y;
 
 	pixman_image = option->buffer->pixman_image;
 	pixman_width = pixman_image_get_width(pixman_image);
 	pixman_height = pixman_image_get_height(pixman_image);
+
+	/* reset transformation of possible previous transform call */
+	pixman_f_transform_init_identity(&ftransform);
+	pixman_transform_from_pixman_f_transform(&transform, &ftransform);
+	pixman_image_set_transform(pixman_image, &transform);
 
 	/*
 	 * Manually performs tiling to support separate modes per
