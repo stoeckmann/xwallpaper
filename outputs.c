@@ -49,6 +49,11 @@ get_output(wp_output_t *outputs, char *name)
 		if (name != NULL && strcmp(output->name, name) == 0)
 			return output;
 
+	if (name != NULL) {
+		warnx("output %s was not found, ignoring", name);
+		return NULL;
+	}
+
 	return output;
 }
 

@@ -370,7 +370,8 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 				process_output(output, tmp, option);
 		else {
 			output = get_output(outputs, option->output);
-			process_output(output, tmp, option);
+			if (output != NULL)
+				process_output(output, tmp, option);
 		}
 	}
 	copy_pixels(xcb_image, pixels, width, height);
