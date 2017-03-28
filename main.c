@@ -232,12 +232,13 @@ load_pixman_images(wp_option_t *options)
 }
 
 static void
-process_output(wp_output_t *output, pixman_image_t *tmp, wp_option_t *option)
+process_output(wp_output_t *output, pixman_image_t *pixman_bits,
+    wp_option_t *option)
 {
 	if (option->mode == MODE_TILE)
-		tile(tmp, output, option);
+		tile(pixman_bits, output, option);
 	else
-		transform(tmp, output, option);
+		transform(pixman_bits, output, option);
 }
 
 static void
@@ -350,7 +351,7 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 	uint16_t width, height;
 	xcb_image_t *xcb_image;
 	uint32_t *pixels;
-	pixman_image_t *tmp;
+	pixman_image_t *pixman_bits;
 
 	/* if possible, let X do the tiling */
 	if (check_x_tiling(options)) {
@@ -375,9 +376,9 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 	xcb_image = create_xcb_image(c, width, height, screen->root_depth);
 
 	pixels = xmalloc(width, height, sizeof(*pixels));
-	tmp = pixman_image_create_bits(PIXMAN_a8r8g8b8, width, height, pixels,
-	    width * sizeof(*pixels));
-	if (tmp == NULL)
+	pixman_bits = pixman_image_create_bits(PIXMAN_a8r8g8b8, width, height,
+	    pixels, width * sizeof(*pixels));
+	if (pixman_bits == NULL)
 		errx(1, "failed to create temporary pixman image");
 
 	for (option = options; option->filename != NULL; option++) {
@@ -390,18 +391,18 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 		if (option->output != NULL &&
 		    strcmp(option->output, "all") == 0)
 			for (output = outputs; output->name != NULL; output++)
-				process_output(output, tmp, option);
+				process_output(output, pixman_bits, option);
 		else {
 			output = get_output(outputs, option->output);
 			if (output != NULL)
-				process_output(output, tmp, option);
+				process_output(output, pixman_bits, option);
 		}
 	}
 	copy_pixels(xcb_image, pixels, width, height);
 	set_wallpaper(c, screen, xcb_image);
 
 	free(pixels);
-	pixman_image_unref(tmp);
+	pixman_image_unref(pixman_bits);
 	free(xcb_image->data);
 	xcb_image_destroy(xcb_image);
 	if (outputs != &tile_output)
