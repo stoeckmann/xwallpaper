@@ -182,6 +182,9 @@ parse_options(char **argv)
 	}
 	options = add_option(options, &count, last);
 
+	if (count == 0)
+		return NULL;
+
 	init_buffers(options, count);
 
 	return options;
