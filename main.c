@@ -48,8 +48,7 @@ check_dimensions(pixman_image_t *pixman_image)
 	width = pixman_image_get_width(pixman_image);
 	height = pixman_image_get_height(pixman_image);
 
-	return (width < 1 || width > UINT16_MAX ||
-	    height < 1 || height > UINT16_MAX);
+	return (width > UINT16_MAX || height > UINT16_MAX);
 }
 
 static void
