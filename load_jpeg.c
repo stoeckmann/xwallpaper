@@ -72,6 +72,9 @@ load_jpeg(FILE *fp)
 		}
 	}
 
+	jpeg_finish_decompress(&cinfo);
+	jpeg_destroy_decompress(&cinfo);
+
 	img = pixman_image_create_bits(PIXMAN_a8r8g8b8, width, height, data,
 	    width * sizeof(uint32_t));
 	if (img == NULL)
