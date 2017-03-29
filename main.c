@@ -161,7 +161,7 @@ load_pixman_images(wp_option_t *options)
 	wp_option_t *option;
 	pixman_image_t *img;
 
-	for (option = options; option->filename != NULL; option++) {
+	for (option = options; option->filename != NULL; option++)
 		if (option->buffer->pixman_image == NULL) {
 			img = load_pixman_image(option->buffer->fp);
 			option->buffer->pixman_image = img;
@@ -171,7 +171,6 @@ load_pixman_images(wp_option_t *options)
 				errx(1, "%s has illegal dimensions",
 				    option->filename);
 		}
-	}
 }
 
 static void
