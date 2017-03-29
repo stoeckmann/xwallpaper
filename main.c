@@ -326,7 +326,9 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 
 	stride = safe_mul(width, sizeof(*pixels));
 	len = safe_mul(height, stride);
-	pixels = xmalloc(len);
+	pixels = calloc(len, 1);
+	if (pixels == NULL)
+		err(1, "failed to allocate memory");
 
 	pixman_bits = pixman_image_create_bits(PIXMAN_a8r8g8b8, width, height,
 	    pixels, stride);
