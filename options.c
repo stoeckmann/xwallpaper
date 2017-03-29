@@ -50,32 +50,33 @@ add_buffer(wp_buffer_t **bufs, size_t *count, wp_buffer_t buf)
 	return i;
 }
 
-static void
-add_option(wp_option_t **opts, size_t *count, wp_option_t opt)
+static wp_option_t *
+add_option(wp_option_t *options, size_t *count, wp_option_t option)
 {
 	size_t i;
 	wp_option_t *o;
 
-	if (opt.filename == NULL)
-		return;
+	if (option.filename == NULL)
+		return options;
 
 	for (i = 0; i < *count; i++)
-		if ((*opts)[i].output != NULL &&
-		    strcmp((*opts)[i].output, opt.output) == 0 &&
-		    (*opts)[i].screen == opt.screen)
+		if (options[i].output != NULL &&
+		    strcmp(options[i].output, option.output) == 0 &&
+		    options[i].screen == option.screen)
 			break;
 
-	if (*count != 0 && i != *count)
-		o = &(*opts)[i];
+	if (options != NULL && i != *count)
+		o = options + i;
 	else {
-		*opts = realloc(*opts, (*count + 2) * sizeof(**opts));
-		if (*opts == NULL)
+		options = realloc(options, (*count + 2) * sizeof(*options));
+		if (options == NULL)
 			err(1, "failed to allocate memory");
-		o = &(*opts)[(*count)++];
-		(*opts)[*count].filename = NULL;
+		o = &options[(*count)++];
+		options[*count].filename = NULL;
 	}
+	memcpy(o, &option, sizeof(*o));
 
-	memcpy(o, &opt, sizeof(opt));
+	return options;
 }
 
 static void
@@ -162,7 +163,7 @@ parse_options(char **argv)
 				warnx("missing argument for --output");
 				return NULL;
 			}
-			add_option(&options, &count, last);
+			options = add_option(options, &count, last);
 			last.output = *argv;
 		} else if ((last.mode = parse_mode(*argv)) != -1) {
 			if (*++argv == NULL) {
@@ -179,7 +180,7 @@ parse_options(char **argv)
 		}
 		++argv;
 	}
-	add_option(&options, &count, last);
+	options = add_option(options, &count, last);
 
 	init_buffers(options, count);
 
