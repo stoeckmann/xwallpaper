@@ -72,7 +72,7 @@ add_option(wp_option_t **opts, size_t *count, wp_option_t opt)
 		if (*opts == NULL)
 			err(1, "failed to allocate memory");
 		o = &(*opts)[(*count)++];
-		(*opts)[(*count)].filename = NULL;
+		(*opts)[*count].filename = NULL;
 	}
 
 	memcpy(o, &opt, sizeof(opt));
@@ -113,19 +113,15 @@ init_buffers(wp_option_t *options, size_t options_count)
 static int
 parse_mode(char *mode)
 {
-	if (strncmp(mode, "--", 2))
-		return -1;
-	mode += 2;
-
-	if (strcmp(mode, "center") == 0)
+	if (strcmp(mode, "--center") == 0)
 		return MODE_CENTER;
-	if (strcmp(mode, "maximize") == 0)
+	if (strcmp(mode, "--maximize") == 0)
 		return MODE_MAXIMIZE;
-	if (strcmp(mode, "stretch") == 0)
+	if (strcmp(mode, "--stretch") == 0)
 		return MODE_STRETCH;
-	if (strcmp(mode, "tile") == 0)
+	if (strcmp(mode, "--tile") == 0)
 		return MODE_TILE;
-	if (strcmp(mode, "zoom") == 0)
+	if (strcmp(mode, "--zoom") == 0)
 		return MODE_ZOOM;
 	return -1;
 }
