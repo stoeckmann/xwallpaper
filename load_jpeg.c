@@ -56,7 +56,7 @@ load_jpeg(FILE *fp)
 	scanline = (*cinfo.mem->alloc_sarray)((j_common_ptr) &cinfo,
 	    JPOOL_IMAGE, cinfo.output_width * cinfo.output_components, 1);
 
-	d = data = xmalloc(width, height, sizeof(*data));
+	d = data = xmalloc(safe_mul3(width, height, sizeof(*data)));
 	for (y = 0; y < height; y++) {
 		jpeg_read_scanlines(&cinfo, scanline, 1);
 		p = scanline[0];

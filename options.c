@@ -85,7 +85,7 @@ init_buffers(wp_option_t *options, size_t options_count)
 	size_t buffers_count, i;
 	size_t *refs;
 
-	refs = xmalloc(options_count, 1, sizeof(*refs));
+	refs = xmalloc(safe_mul(options_count, sizeof(*refs)));
 
 	buffers = NULL;
 	buffers_count = 0;

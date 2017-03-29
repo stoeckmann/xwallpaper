@@ -301,6 +301,7 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 	xcb_image_t *xcb_image;
 	uint32_t *pixels;
 	pixman_image_t *pixman_bits;
+	size_t len, stride;
 
 	/* if possible, let X do the tiling */
 	if (check_x_tiling(options)) {
@@ -323,9 +324,12 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 		outputs = get_outputs(c, screen);
 	}
 
-	pixels = xmalloc(width, height, sizeof(*pixels));
+	stride = safe_mul(width, sizeof(*pixels));
+	len = safe_mul(height, stride);
+	pixels = xmalloc(len);
+
 	pixman_bits = pixman_image_create_bits(PIXMAN_a8r8g8b8, width, height,
-	    pixels, width * sizeof(*pixels));
+	    pixels, stride);
 	if (pixman_bits == NULL)
 		errx(1, "failed to create temporary pixman image");
 
@@ -348,8 +352,7 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 	}
 
 	xcb_image = xcb_image_create_native(c, width, height,
-	    XCB_IMAGE_FORMAT_Z_PIXMAP, 32, NULL,
-	    width * height * sizeof(*pixels), (uint8_t *) pixels);
+	    XCB_IMAGE_FORMAT_Z_PIXMAP, 32, NULL, len, (uint8_t *) pixels);
 	set_wallpaper(c, screen, xcb_image);
 
 	free(pixels);
