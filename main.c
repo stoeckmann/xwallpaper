@@ -357,9 +357,9 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 	    XCB_IMAGE_FORMAT_Z_PIXMAP, 32, NULL, len, (uint8_t *) pixels);
 	set_wallpaper(c, screen, xcb_image);
 
-	free(pixels);
-	pixman_image_unref(pixman_bits);
 	xcb_image_destroy(xcb_image);
+	pixman_image_unref(pixman_bits);
+	free(pixels);
 	if (outputs != &tile_output)
 		free_outputs(outputs);
 }
