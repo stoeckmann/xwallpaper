@@ -108,8 +108,7 @@ get_randr_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 		crtc = xcb_randr_get_output_info_crtcs(output_reply);
 		crtc_len = xcb_randr_get_output_info_crtcs_length(output_reply);
 
-		if ((outputs[i].name = malloc(name_len + 1)) == NULL)
-			errx(1, "failed to allocate memory");
+		outputs[i].name = xmalloc(name_len + 1);
 		memcpy(outputs[i].name, name, name_len);
 		outputs[i].name[name_len] = '\0';
 

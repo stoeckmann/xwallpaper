@@ -127,7 +127,6 @@ transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 	    translate_x, translate_y);
 	if (option->mode != MODE_CENTER)
 		pixman_f_transform_scale(&ftransform, NULL, w_scale, h_scale);
-
 	pixman_transform_from_pixman_f_transform(&transform, &ftransform);
 	pixman_image_set_transform(pixman_image, &transform);
 
@@ -155,17 +154,13 @@ static void
 load_pixman_images(wp_option_t *options)
 {
 	wp_option_t *option;
+	pixman_image_t *img;
 
 	for (option = options; option->filename != NULL; option++) {
-		wp_buffer_t *buffer;
-
-		buffer = option->buffer;
-		if (buffer->pixman_image == NULL) {
-			pixman_image_t *img;
-
-			img = load_pixman_image(buffer->fp);
-			buffer->pixman_image = img;
-			fclose(buffer->fp);
+		if (option->buffer->pixman_image == NULL) {
+			img = load_pixman_image(option->buffer->fp);
+			option->buffer->pixman_image = img;
+			fclose(option->buffer->fp);
 			if (pixman_image_get_width(img) > UINT16_MAX ||
 			    pixman_image_get_height(img) > UINT16_MAX)
 				errx(1, "%s has illegal dimensions",
@@ -202,12 +197,11 @@ update_atoms(xcb_connection_t *c, xcb_screen_t *screen, xcb_pixmap_t pixmap)
 	for (i = 0; i < 2; i++)
 		atom_reply[i] = xcb_intern_atom_reply(c, atom_cookie[i], NULL);
 
-	for (i = 0; i < 2; i++) {
+	for (i = 0; i < 2; i++)
 		if (atom_reply[i] != NULL)
 			property_cookie[i] = xcb_get_property(c, 0,
 			    screen->root, atom_reply[i]->atom, XCB_ATOM_PIXMAP,
 			    0, 1);
-	}
 
 	for (i = 0; i < 2; i++) {
 		if (atom_reply[i] != NULL)
@@ -262,23 +256,6 @@ set_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, xcb_image_t *xcb_image)
 	update_atoms(c, screen, pixmap);
 
 	xcb_clear_area(c, 0, screen->root, 0, 0, 0, 0);
-	xcb_request_check(c,
-	    xcb_set_close_down_mode(c, XCB_CLOSE_DOWN_RETAIN_PERMANENT));
-}
-
-static int
-check_x_tiling(wp_option_t *options)
-{
-	wp_option_t *option;
-	size_t n;
-
-	for (n = 0, option = options; option->filename != NULL; option++, n++)
-		if (option->mode != MODE_TILE)
-			return 0;
-	if (n > 1)
-		return 0;
-
-	return options->output == NULL;
 }
 
 static void
@@ -290,18 +267,17 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 	uint16_t width, height;
 	xcb_image_t *xcb_image;
 	uint32_t *pixels;
-	pixman_image_t *pixman_bits;
+	pixman_image_t *pixman_root;
 	size_t len, stride;
 
-	/* if possible, let X do the tiling */
-	if (check_x_tiling(options)) {
-		pixman_image_t *pixman_image;
-
-		pixman_image = options->buffer->pixman_image;
-		width = pixman_image_get_width(pixman_image);
-		height = pixman_image_get_height(pixman_image);
+	/* let X perform non-randr tiling if requested */
+	if (options[0].mode == MODE_TILE && options[0].output == NULL &&
+	    options[1].filename == NULL) {
+		pixman_image_t *pixman_image = options->buffer->pixman_image;
 
 		/* fake an output that fits the picture */
+		width = pixman_image_get_width(pixman_image);
+		height = pixman_image_get_height(pixman_image);
 		tile_output.x = 0;
 		tile_output.y = 0;
 		tile_output.width = width;
@@ -316,13 +292,12 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 
 	SAFE_MUL(stride, width, sizeof(*pixels));
 	SAFE_MUL(len, height, stride);
-	pixels = calloc(len, 1);
-	if (pixels == NULL)
+	if ((pixels = calloc(len, 1)) == NULL)
 		err(1, "failed to allocate memory");
 
-	pixman_bits = pixman_image_create_bits(PIXMAN_a8r8g8b8, width, height,
+	pixman_root = pixman_image_create_bits(PIXMAN_a8r8g8b8, width, height,
 	    pixels, stride);
-	if (pixman_bits == NULL)
+	if (pixman_root == NULL)
 		errx(1, "failed to create temporary pixman image");
 
 	for (option = options; option->filename != NULL; option++) {
@@ -335,11 +310,11 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 		if (option->output != NULL &&
 		    strcmp(option->output, "all") == 0)
 			for (output = outputs; output->name != NULL; output++)
-				process_output(output, pixman_bits, option);
+				process_output(output, pixman_root, option);
 		else {
 			output = get_output(outputs, option->output);
 			if (output != NULL)
-				process_output(output, pixman_bits, option);
+				process_output(output, pixman_root, option);
 		}
 	}
 
@@ -348,7 +323,7 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 	set_wallpaper(c, screen, xcb_image);
 
 	xcb_image_destroy(xcb_image);
-	pixman_image_unref(pixman_bits);
+	pixman_image_unref(pixman_root);
 	free(pixels);
 	if (outputs != &tile_output)
 		free_outputs(outputs);
@@ -381,7 +356,8 @@ main(int argc, char *argv[])
 	for (snum = 0; it.rem; snum++, xcb_screen_next(&it))
 		process_screen(c, it.data, snum, options);
 
-	xcb_flush(c);
+	xcb_request_check(c,
+	    xcb_set_close_down_mode(c, XCB_CLOSE_DOWN_RETAIN_PERMANENT));
 	xcb_disconnect(c);
 
 	return 0;

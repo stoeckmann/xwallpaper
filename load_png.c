@@ -49,6 +49,7 @@ load_png(FILE *fp)
 	png_infop info_ptr;
 	png_uint_32 x, y, width, height;
 	size_t len;
+	unsigned char *p;
 
 	if (!is_png(fp))
 		return NULL;
@@ -79,16 +80,9 @@ load_png(FILE *fp)
 
 	SAFE_MUL3(len, width, height, sizeof(*pixels));
 	pixel = pixels = xmalloc(len);
-	for (y = 0; y < height; y++) {
-		unsigned char *p = rows[y];
-		for (x = 0; x < width; x++) {
-			uint8_t r, g, b;
-			r = *p++;
-			g = *p++;
-			b = *p++;
-			*pixel++ = (r << 16) | (g << 8) | b;
-		}
-	}
+	for (y = 0; y < height; y++)
+		for (p = rows[y], x = 0; x < width; x++, p += 3)
+			*pixel++ = (p[0] << 16) | (p[1] << 8) | p[2];
 
 	png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
 
