@@ -41,6 +41,7 @@ load_jpeg(FILE *fp)
 	JDIMENSION x, y, width, height;
 	struct jpeg_decompress_struct cinfo;
 	uint32_t *d, *data;
+	size_t len;
 
 	cinfo.err = jpeg_std_error(&error_mgr);
 	error_mgr.error_exit = error_jpg;
@@ -56,7 +57,8 @@ load_jpeg(FILE *fp)
 	scanline = (*cinfo.mem->alloc_sarray)((j_common_ptr) &cinfo,
 	    JPOOL_IMAGE, cinfo.output_width * cinfo.output_components, 1);
 
-	d = data = xmalloc(safe_mul3(width, height, sizeof(*data)));
+	SAFE_MUL3(len, width, height, sizeof(*data));
+	d = data = xmalloc(len);
 	for (y = 0; y < height; y++) {
 		jpeg_read_scanlines(&cinfo, scanline, 1);
 		p = scanline[0];

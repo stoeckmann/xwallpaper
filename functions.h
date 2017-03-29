@@ -29,6 +29,17 @@
 #define MODE_TILE	4
 #define MODE_ZOOM	5
 
+#define SAFE_MUL(res, x, y) do {					 \
+        if ((x) != 0 && SIZE_MAX / (x) < (y))				 \
+                errx(1, "memory allocation would exceed system limits"); \
+        res = (x) * (y);						 \
+} while (0)
+
+#define SAFE_MUL3(res, x, y, z) do {					 \
+	SAFE_MUL(res, (x), (y));					 \
+	SAFE_MUL(res, res, (z));					 \
+} while (0)
+
 struct wp_buffer {
 	FILE		*fp;
 	pixman_image_t	*pixman_image;
@@ -60,6 +71,4 @@ void		 init_outputs(xcb_connection_t *);
 pixman_image_t	*load_png(FILE *);
 pixman_image_t	*load_jpeg(FILE *);
 wp_option_t	*parse_options(char **);
-size_t		 safe_mul(size_t, size_t);
-size_t		 safe_mul3(size_t, size_t, size_t);
 void		*xmalloc(size_t);

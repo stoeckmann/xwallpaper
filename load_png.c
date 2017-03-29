@@ -48,6 +48,7 @@ load_png(FILE *fp)
 	png_structp png_ptr;
 	png_infop info_ptr;
 	png_uint_32 x, y, width, height;
+	size_t len;
 
 	if (!is_png(fp))
 		return NULL;
@@ -76,7 +77,8 @@ load_png(FILE *fp)
 	height = png_get_image_height(png_ptr, info_ptr);
 	rows = png_get_rows(png_ptr, info_ptr);
 
-	d = data = xmalloc(safe_mul3(width, height, sizeof(*data)));
+	SAFE_MUL3(len, width, height, sizeof(*data));
+	d = data = xmalloc(len);
 	for (y = 0; y < height; y++) {
 		unsigned char *p = rows[y];
 		for (x = 0; x < width; x++) {

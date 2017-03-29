@@ -67,6 +67,7 @@ get_randr_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 	xcb_randr_get_screen_resources_reply_t *resources_reply;
 	xcb_randr_output_t *xcb_outputs;
 	int i;
+	size_t n;
 
 	resources_cookie = xcb_randr_get_screen_resources(c, screen->root);
 	resources_reply = xcb_randr_get_screen_resources_reply(c,
@@ -77,7 +78,8 @@ get_randr_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 	if (len < 1)
 		errx(1, "failed to retrieve randr outputs");
 
-	outputs = xmalloc(safe_mul(len + 1, sizeof(*outputs)));
+	SAFE_MUL(n, len + 1, sizeof(*outputs));
+	outputs = xmalloc(n);
 
 	for (i = 0; i < len; i++) {
 		xcb_randr_get_output_info_cookie_t output_cookie;

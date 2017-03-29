@@ -15,31 +15,15 @@
  */
 
 #include <err.h>
-#include <stdint.h>
 #include <stdlib.h>
-
-size_t
-safe_mul(size_t x, size_t y)
-{
-	if (x == 0 || y == 0)
-		errx(1, "attempted to allocate 0 bytes");
-
-	if (SIZE_MAX / x < y)
-		errx(1, "memory allocation would exceed system limits");
-
-	return x * y;
-}
-
-size_t
-safe_mul3(size_t x, size_t y, size_t z)
-{
-	return safe_mul(x, safe_mul(y, z));
-}
 
 void *
 xmalloc(size_t n)
 {
 	void *p;
+
+	if (n == 0)
+		errx(1, "attempted to allocate 0 bytes");
 
 	p = malloc(n);
 	if (p == NULL)

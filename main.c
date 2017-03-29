@@ -324,8 +324,8 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 		outputs = get_outputs(c, screen);
 	}
 
-	stride = safe_mul(width, sizeof(*pixels));
-	len = safe_mul(height, stride);
+	SAFE_MUL(stride, width, sizeof(*pixels));
+	SAFE_MUL(len, height, stride);
 	pixels = calloc(len, 1);
 	if (pixels == NULL)
 		err(1, "failed to allocate memory");
@@ -385,9 +385,9 @@ main(int argc, char *argv[])
 	pledge("stdio", NULL);
 #endif
 
-	load_pixman_images(options);
-
 	init_outputs(c);
+
+	load_pixman_images(options);
 
 	it = xcb_setup_roots_iterator(xcb_get_setup(c));
 	for (snum = 0; it.rem; snum++, xcb_screen_next(&it))
