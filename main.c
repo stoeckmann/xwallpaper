@@ -40,23 +40,11 @@ usage(void)
 	exit(1);
 }
 
-static int
-check_dimensions(pixman_image_t *pixman_image)
-{
-	int width, height;
-
-	width = pixman_image_get_width(pixman_image);
-	height = pixman_image_get_height(pixman_image);
-
-	return (width > UINT16_MAX || height > UINT16_MAX);
-}
-
 static void
 tile(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 {
 	pixman_image_t *pixman_image;
 	int pixman_width, pixman_height;
-	pixman_transform_t transform;
 	uint16_t off_x, off_y;
 
 	pixman_image = option->buffer->pixman_image;
@@ -64,8 +52,7 @@ tile(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 	pixman_height = pixman_image_get_height(pixman_image);
 
 	/* reset transformation of possible previous transform call */
-	pixman_transform_init_identity(&transform);
-	pixman_image_set_transform(pixman_image, &transform);
+	pixman_image_set_transform(pixman_image, NULL);
 
 	/*
 	 * Manually performs tiling to support separate modes per
@@ -174,9 +161,13 @@ load_pixman_images(wp_option_t *options)
 
 		buffer = option->buffer;
 		if (buffer->pixman_image == NULL) {
-			buffer->pixman_image = load_pixman_image(buffer->fp);
+			pixman_image_t *img;
+
+			img = load_pixman_image(buffer->fp);
+			buffer->pixman_image = img;
 			fclose(buffer->fp);
-			if (check_dimensions(buffer->pixman_image))
+			if (pixman_image_get_width(img) > UINT16_MAX ||
+			    pixman_image_get_height(img) > UINT16_MAX)
 				errx(1, "%s has illegal dimensions",
 				    option->filename);
 		}

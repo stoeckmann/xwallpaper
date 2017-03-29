@@ -25,9 +25,7 @@ xmalloc(size_t n)
 	if (n == 0)
 		errx(1, "attempted to allocate 0 bytes");
 
-	p = malloc(n);
-	if (p == NULL)
+	if ((p = malloc(n)) == NULL)
 		err(1, "failed to allocate memory");
-
 	return p;
 }

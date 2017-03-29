@@ -94,12 +94,7 @@ scan_rgb(struct jpeg_decompress_struct *cinfo, JSAMPARRAY scanline,
 		jpeg_read_scanlines(cinfo, scanline, 1);
 		p = scanline[0];
 		for (x = 0; x < width; x++) {
-			uint8_t r, g, b;
-
-			r = p[0];
-			g = p[1];
-			b = p[2];
-			*pixels++ = r << 16 | g << 8 | b;
+			*pixels++ = p[0] << 16 | p[1] << 8 | p[2];
 			p += cinfo->output_components;
 		}
 	}
