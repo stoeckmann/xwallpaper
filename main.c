@@ -345,6 +345,8 @@ main(int argc, char *argv[])
 		usage();
 
 	c = xcb_connect(NULL, NULL);
+	if (xcb_connection_has_error(c))
+		errx(1, "failed to connect to X server");
 
 #ifdef HAVE_PLEDGE
 	pledge("stdio", NULL);
@@ -358,6 +360,9 @@ main(int argc, char *argv[])
 
 	xcb_request_check(c,
 	    xcb_set_close_down_mode(c, XCB_CLOSE_DOWN_RETAIN_PERMANENT));
+	if (xcb_connection_has_error(c))
+		warnx("error encountered while setting wallpaper");
+
 	xcb_disconnect(c);
 
 	return 0;
