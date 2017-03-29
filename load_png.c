@@ -43,7 +43,7 @@ load_png(FILE *fp)
 {
 	pixman_image_t *img;
 	png_bytepp rows;
-	uint32_t *d, *data;
+	uint32_t *pixel, *pixels;
 	int trans;
 	png_structp png_ptr;
 	png_infop info_ptr;
@@ -77,8 +77,8 @@ load_png(FILE *fp)
 	height = png_get_image_height(png_ptr, info_ptr);
 	rows = png_get_rows(png_ptr, info_ptr);
 
-	SAFE_MUL3(len, width, height, sizeof(*data));
-	d = data = xmalloc(len);
+	SAFE_MUL3(len, width, height, sizeof(*pixels));
+	pixel = pixels = xmalloc(len);
 	for (y = 0; y < height; y++) {
 		unsigned char *p = rows[y];
 		for (x = 0; x < width; x++) {
@@ -86,13 +86,13 @@ load_png(FILE *fp)
 			r = *p++;
 			g = *p++;
 			b = *p++;
-			*d++ = (r << 16) | (g << 8) | b;
+			*pixel++ = (r << 16) | (g << 8) | b;
 		}
 	}
 
 	png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
 
-	img = pixman_image_create_bits(PIXMAN_a8r8g8b8, width, height, data,
+	img = pixman_image_create_bits(PIXMAN_a8r8g8b8, width, height, pixels,
 	    width * sizeof(uint32_t));
 	if (img == NULL)
 		errx(1, "failed to create pixman image");

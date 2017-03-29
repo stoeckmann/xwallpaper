@@ -33,16 +33,14 @@ error_jpg(j_common_ptr common)
 
 static void
 scan_cmyk(struct jpeg_decompress_struct *cinfo, JSAMPARRAY scanline,
-    uint32_t *data)
+    uint32_t *pixels)
 {
 	JDIMENSION x, y, width, height;
 	JSAMPLE *p;
-	uint32_t *d;
 
 	width = cinfo->image_width;
 	height = cinfo->image_height;
 
-	d = data;
 	for (y = 0; y < height; y++) {
 		jpeg_read_scanlines(cinfo, scanline, 1);
 		p = scanline[0];
@@ -54,7 +52,8 @@ scan_cmyk(struct jpeg_decompress_struct *cinfo, JSAMPARRAY scanline,
 			y = 255 - p[2];
 			k = 255 - p[3];
 
-			*d++ = (255 - (c + k)) << 16 | (255 - (m + k)) << 8 |
+			*pixels++ = (255 - (c + k)) << 16 |
+			    (255 - (m + k)) << 8 |
 			    (255 - (y + k));
 			p += cinfo->output_components;
 		}
@@ -63,21 +62,19 @@ scan_cmyk(struct jpeg_decompress_struct *cinfo, JSAMPARRAY scanline,
 
 static void
 scan_gray(struct jpeg_decompress_struct *cinfo, JSAMPARRAY scanline,
-    uint32_t *data)
+    uint32_t *pixels)
 {
 	JDIMENSION x, y, width, height;
 	JSAMPLE *p;
-	uint32_t *d;
 
 	width = cinfo->image_width;
 	height = cinfo->image_height;
 
-	d = data;
 	for (y = 0; y < height; y++) {
 		jpeg_read_scanlines(cinfo, scanline, 1);
 		p = scanline[0];
 		for (x = 0; x < width; x++) {
-			*d++ = p[0] << 16 | p[0] << 8 | p[0];
+			*pixels++ = p[0] << 16 | p[0] << 8 | p[0];
 			p += cinfo->output_components;
 		}
 	}
@@ -85,16 +82,14 @@ scan_gray(struct jpeg_decompress_struct *cinfo, JSAMPARRAY scanline,
 
 static void
 scan_rgb(struct jpeg_decompress_struct *cinfo, JSAMPARRAY scanline,
-    uint32_t *data)
+    uint32_t *pixels)
 {
 	JDIMENSION x, y, width, height;
 	JSAMPLE *p;
-	uint32_t *d;
 
 	width = cinfo->image_width;
 	height = cinfo->image_height;
 
-	d = data;
 	for (y = 0; y < height; y++) {
 		jpeg_read_scanlines(cinfo, scanline, 1);
 		p = scanline[0];
@@ -104,7 +99,7 @@ scan_rgb(struct jpeg_decompress_struct *cinfo, JSAMPARRAY scanline,
 			r = p[0];
 			g = p[1];
 			b = p[2];
-			*d++ = r << 16 | g << 8 | b;
+			*pixels++ = r << 16 | g << 8 | b;
 			p += cinfo->output_components;
 		}
 	}
@@ -118,7 +113,7 @@ load_jpeg(FILE *fp)
 	JSAMPARRAY scanline;
 	JDIMENSION width, height;
 	struct jpeg_decompress_struct cinfo;
-	uint32_t *data;
+	uint32_t *pixels;
 	size_t len;
 
 	cinfo.err = jpeg_std_error(&error_mgr);
@@ -135,8 +130,8 @@ load_jpeg(FILE *fp)
 	scanline = (*cinfo.mem->alloc_sarray)((j_common_ptr) &cinfo,
 	    JPOOL_IMAGE, cinfo.output_width * cinfo.output_components, 1);
 
-	SAFE_MUL3(len, width, height, sizeof(*data));
-	data = xmalloc(len);
+	SAFE_MUL3(len, width, height, sizeof(*pixels));
+	pixels = xmalloc(len);
 
 	if (cinfo.jpeg_color_space == JCS_YCbCr)
 		cinfo.out_color_space = JCS_RGB;
@@ -145,23 +140,23 @@ load_jpeg(FILE *fp)
 
 	switch (cinfo.out_color_space) {
 		case JCS_GRAYSCALE:
-			scan_gray(&cinfo, scanline, data);
+			scan_gray(&cinfo, scanline, pixels);
 			break;
 		case JCS_CMYK:
-			scan_cmyk(&cinfo, scanline, data);
+			scan_cmyk(&cinfo, scanline, pixels);
 			break;
 		default:
 			if (cinfo.output_components < 3)
 				errx(1, "failed to parse unknown color space");
 			cinfo.out_color_space = JCS_RGB;
-			scan_rgb(&cinfo, scanline, data);
+			scan_rgb(&cinfo, scanline, pixels);
 			break;
 	}
 
 	jpeg_finish_decompress(&cinfo);
 	jpeg_destroy_decompress(&cinfo);
 
-	img = pixman_image_create_bits(PIXMAN_a8r8g8b8, width, height, data,
+	img = pixman_image_create_bits(PIXMAN_a8r8g8b8, width, height, pixels,
 	    width * sizeof(uint32_t));
 	if (img == NULL)
 		errx(1, "failed to create pixman image");
