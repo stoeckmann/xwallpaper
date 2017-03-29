@@ -40,29 +40,26 @@
 	SAFE_MUL(res, res, (y));					 \
 } while (0)
 
-struct wp_buffer {
+typedef struct wp_buffer {
 	FILE		*fp;
 	pixman_image_t	*pixman_image;
 	dev_t		 st_dev;
 	ino_t		 st_ino;
-};
-typedef struct wp_buffer wp_buffer_t;
+} wp_buffer_t;
 
-struct wp_option {
+typedef struct wp_option {
 	wp_buffer_t	*buffer;
 	char		*filename;
 	int		 mode;
 	char		*output;
 	int		 screen;
-};
-typedef struct wp_option wp_option_t;
+} wp_option_t;
 
-struct wp_output {
+typedef struct wp_output {
 	char *name;
 	int16_t x, y;
 	uint16_t width, height;
-};
-typedef struct wp_output wp_output_t;
+} wp_output_t;
 
 void		 free_outputs(wp_output_t *);
 wp_output_t	*get_output(wp_output_t *, char *);
