@@ -166,12 +166,8 @@ parse_options(char **argv)
 				warnx("missing argument for --output");
 				return NULL;
 			}
-#ifdef WITH_RANDR
 			add_option(&options, &count, last);
 			last.output = *argv;
-#else
-			warnx("RandR support is missing, ignoring --output");
-#endif /* WITH_RANDR */
 		} else if ((last.mode = parse_mode(*argv)) != -1) {
 			if (*++argv == NULL) {
 				warnx("missing argument for %s", *argv);
