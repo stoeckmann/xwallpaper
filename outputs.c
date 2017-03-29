@@ -151,8 +151,7 @@ get_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 		return get_randr_outputs(c, screen);
 #endif /* WITH_RANDR */
 
-	if ((outputs = malloc(sizeof(*outputs))) == NULL)
-		errx(1, "failed to allocate memory");
+	outputs = xmalloc(sizeof(*outputs));
 
 	outputs[0].name = NULL;
 	outputs[0].x = 0;
