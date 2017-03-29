@@ -85,7 +85,7 @@ get_randr_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 	if (len < 1)
 		errx(1, "failed to retrieve randr outputs");
 
-	SAFE_MUL(n, len + 1, sizeof(*outputs));
+	SAFE_MUL(n, (size_t)len + 1, sizeof(*outputs));
 	outputs = xmalloc(n);
 
 	for (i = 0; i < len; i++) {
