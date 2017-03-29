@@ -51,8 +51,9 @@ tile(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 	pixman_width = pixman_image_get_width(pixman_image);
 	pixman_height = pixman_image_get_height(pixman_image);
 
-	/* reset transformation of possible previous transform call */
+	/* reset transformation and filter of transform calls */
 	pixman_image_set_transform(pixman_image, NULL);
+	pixman_image_set_filter(pixman_image, PIXMAN_FILTER_FAST, NULL, 0);
 
 	/*
 	 * Manually performs tiling to support separate modes per
@@ -88,6 +89,7 @@ transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 	pixman_image_t *pixman_image;
 	pixman_f_transform_t ftransform;
 	pixman_transform_t transform;
+	pixman_filter_t filter;
 	int pixman_width, pixman_height;
 	uint16_t xcb_width, xcb_height;
 	float w_scale, h_scale, scale;
@@ -101,9 +103,11 @@ transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 
 	w_scale = (float)pixman_width / xcb_width;
 	h_scale = (float)pixman_height / xcb_height;
+	filter = PIXMAN_FILTER_BEST;
 
 	switch (option->mode) {
 		case MODE_CENTER:
+			filter = PIXMAN_FILTER_FAST;
 			w_scale = 1;
 			h_scale = 1;
 			break;
@@ -127,6 +131,7 @@ transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 	    translate_x, translate_y);
 	if (option->mode != MODE_CENTER)
 		pixman_f_transform_scale(&ftransform, NULL, w_scale, h_scale);
+	pixman_image_set_filter(pixman_image, filter, NULL, 0);
 	pixman_transform_from_pixman_f_transform(&transform, &ftransform);
 	pixman_image_set_transform(pixman_image, &transform);
 
