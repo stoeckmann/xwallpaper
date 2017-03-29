@@ -28,8 +28,6 @@
 
 #include "functions.h"
 
-static int has_randr;
-
 void
 free_outputs(wp_output_t *outputs)
 {
@@ -58,6 +56,15 @@ get_output(wp_output_t *outputs, char *name)
 }
 
 #ifdef WITH_RANDR
+static int
+check_randr(xcb_connection_t *c)
+{
+	const xcb_query_extension_reply_t *reply;
+
+	reply = xcb_get_extension_data(c, &xcb_randr_id);
+	return reply != NULL && reply->present;
+}
+
 static wp_output_t *
 get_randr_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 {
@@ -135,8 +142,11 @@ wp_output_t *
 get_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 {
 	wp_output_t *outputs;
-
 #ifdef WITH_RANDR
+	static int has_randr = -1;
+
+	if (has_randr == -1)
+		has_randr = check_randr(c);
 	if (has_randr)
 		return get_randr_outputs(c, screen);
 #endif /* WITH_RANDR */
@@ -151,15 +161,4 @@ get_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 	outputs[0].height = screen->height_in_pixels;
 
 	return outputs;
-}
-
-void
-init_outputs(xcb_connection_t *c)
-{
-#ifdef WITH_RANDR
-	const xcb_query_extension_reply_t *reply;
-
-	reply = xcb_get_extension_data(c, &xcb_randr_id);
-	has_randr = reply != NULL && reply->present;
-#endif /* WITH_RANDR */
 }

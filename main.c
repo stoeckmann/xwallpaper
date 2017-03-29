@@ -385,8 +385,6 @@ main(int argc, char *argv[])
 	pledge("stdio", NULL);
 #endif
 
-	init_outputs(c);
-
 	load_pixman_images(options);
 
 	it = xcb_setup_roots_iterator(xcb_get_setup(c));
