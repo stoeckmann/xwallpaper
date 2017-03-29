@@ -140,7 +140,8 @@ transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 	pixman_f_transform_init_identity(&ftransform);
 	pixman_f_transform_translate(&ftransform, NULL,
 	    translate_x, translate_y);
-	pixman_f_transform_scale(&ftransform, NULL, w_scale, h_scale);
+	if (option->mode != MODE_CENTER)
+		pixman_f_transform_scale(&ftransform, NULL, w_scale, h_scale);
 
 	pixman_transform_from_pixman_f_transform(&transform, &ftransform);
 	pixman_image_set_transform(pixman_image, &transform);
