@@ -30,14 +30,14 @@
 #define MODE_ZOOM	5
 
 #define SAFE_MUL(res, x, y) do {					 \
-        if ((x) != 0 && SIZE_MAX / (x) < (y))				 \
+        if ((y) != 0 && SIZE_MAX / (y) < (x))				 \
                 errx(1, "memory allocation would exceed system limits"); \
         res = (x) * (y);						 \
 } while (0)
 
 #define SAFE_MUL3(res, x, y, z) do {					 \
-	SAFE_MUL(res, (x), (y));					 \
-	SAFE_MUL(res, res, (z));					 \
+	SAFE_MUL(res, (x), (z));					 \
+	SAFE_MUL(res, res, (y));					 \
 } while (0)
 
 struct wp_buffer {
