@@ -31,16 +31,94 @@ error_jpg(j_common_ptr common)
 	errx(1, "failed to parse input file");
 }
 
+static void
+scan_cmyk(struct jpeg_decompress_struct *cinfo, JSAMPARRAY scanline,
+    uint32_t *data)
+{
+	JDIMENSION x, y, width, height;
+	JSAMPLE *p;
+	uint32_t *d;
+
+	width = cinfo->image_width;
+	height = cinfo->image_height;
+
+	d = data;
+	for (y = 0; y < height; y++) {
+		jpeg_read_scanlines(cinfo, scanline, 1);
+		p = scanline[0];
+		for (x = 0; x < width; x++) {
+			uint8_t c, m, y, k;
+
+			c = 255 - p[0];
+			m = 255 - p[1];
+			y = 255 - p[2];
+			k = 255 - p[3];
+
+			*d++ = (255 - (c + k)) << 16 | (255 - (m + k)) << 8 |
+			    (255 - (y + k));
+			p += cinfo->output_components;
+		}
+	}
+}
+
+static void
+scan_gray(struct jpeg_decompress_struct *cinfo, JSAMPARRAY scanline,
+    uint32_t *data)
+{
+	JDIMENSION x, y, width, height;
+	JSAMPLE *p;
+	uint32_t *d;
+
+	width = cinfo->image_width;
+	height = cinfo->image_height;
+
+	d = data;
+	for (y = 0; y < height; y++) {
+		jpeg_read_scanlines(cinfo, scanline, 1);
+		p = scanline[0];
+		for (x = 0; x < width; x++) {
+			*d++ = p[0] << 16 | p[0] << 8 | p[0];
+			p += cinfo->output_components;
+		}
+	}
+}
+
+static void
+scan_rgb(struct jpeg_decompress_struct *cinfo, JSAMPARRAY scanline,
+    uint32_t *data)
+{
+	JDIMENSION x, y, width, height;
+	JSAMPLE *p;
+	uint32_t *d;
+
+	width = cinfo->image_width;
+	height = cinfo->image_height;
+
+	d = data;
+	for (y = 0; y < height; y++) {
+		jpeg_read_scanlines(cinfo, scanline, 1);
+		p = scanline[0];
+		for (x = 0; x < width; x++) {
+			uint8_t r, g, b;
+
+			r = p[0];
+			g = p[1];
+			b = p[2];
+			*d++ = r << 16 | g << 8 | b;
+			p += cinfo->output_components;
+		}
+	}
+}
+
 pixman_image_t *
 load_jpeg(FILE *fp)
 {
 	struct jpeg_error_mgr error_mgr;
 	pixman_image_t *img;
-	JSAMPLE *p;
 	JSAMPARRAY scanline;
-	JDIMENSION x, y, width, height;
+	JDIMENSION width, height;
 	struct jpeg_decompress_struct cinfo;
-	uint32_t *d, *data;
+	uint32_t *data;
 	size_t len;
 
 	cinfo.err = jpeg_std_error(&error_mgr);
@@ -58,18 +136,26 @@ load_jpeg(FILE *fp)
 	    JPOOL_IMAGE, cinfo.output_width * cinfo.output_components, 1);
 
 	SAFE_MUL3(len, width, height, sizeof(*data));
-	d = data = xmalloc(len);
-	for (y = 0; y < height; y++) {
-		jpeg_read_scanlines(&cinfo, scanline, 1);
-		p = scanline[0];
-		for (x = 0; x < width; x++) {
-			uint8_t r, g, b;
-			r = p[0];
-			g = p[1];
-			b = p[2];
-			*d++ = (0xFF000000) | r << 16 | g << 8 | b;
-			p += cinfo.output_components;
-		}
+	data = xmalloc(len);
+
+	if (cinfo.jpeg_color_space == JCS_YCbCr)
+		cinfo.out_color_space = JCS_RGB;
+	else if (cinfo.jpeg_color_space == JCS_YCCK)
+		cinfo.out_color_space = JCS_CMYK;
+
+	switch (cinfo.out_color_space) {
+		case JCS_GRAYSCALE:
+			scan_gray(&cinfo, scanline, data);
+			break;
+		case JCS_CMYK:
+			scan_cmyk(&cinfo, scanline, data);
+			break;
+		default:
+			if (cinfo.output_components < 3)
+				errx(1, "failed to parse unknown color space");
+			cinfo.out_color_space = JCS_RGB;
+			scan_rgb(&cinfo, scanline, data);
+			break;
 	}
 
 	jpeg_finish_decompress(&cinfo);
