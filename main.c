@@ -75,15 +75,12 @@ tile(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 				w = output->width - off_x;
 			else
 				w = pixman_width;
-
 #ifdef DEBUG
 			printf("tiling %s for %s (area %dx%d+%d+%d)\n",
 			    option->filename, output->name != NULL ?
 			    output->name : "screen", w, h, output->x + off_x,
 			    output->y + off_y);
 #endif /* DEBUG */
-
-
 			pixman_image_composite(PIXMAN_OP_CONJOINT_SRC,
 			    pixman_image, NULL, dest, 0, 0, 0, 0,
 			    output->x + off_x, output->y + off_y, w, h);
@@ -142,13 +139,11 @@ transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 	pixman_image_set_filter(pixman_image, filter, NULL, 0);
 	pixman_transform_from_pixman_f_transform(&transform, &ftransform);
 	pixman_image_set_transform(pixman_image, &transform);
-
 #ifdef DEBUG
 	printf("compositing %s for %s (area %dx%d+%d+%d) (mode %d)\n",
 	    option->filename, output->name != NULL ? output->name : "screen",
 	    output->width, output->height, output->x, output->y, option->mode);
 #endif /* DEBUG */
-
 	pixman_image_composite(PIXMAN_OP_CONJOINT_SRC, pixman_image, NULL, dest,
 	    0, 0, 0, 0, output->x, output->y, output->width, output->height);
 }
@@ -406,22 +401,18 @@ main(int argc, char *argv[])
 	xcb_connection_t *c;
 	xcb_screen_iterator_t it;
 	int snum;
-
 #ifdef HAVE_PLEDGE
 	pledge("dns inet rpath stdio unix", NULL);
-#endif
-
+#endif /* HAVE_PLEDGE */
 	if (argc < 2 || (options = parse_options(++argv)) == NULL)
 		usage();
 
 	c = xcb_connect(NULL, NULL);
 	if (xcb_connection_has_error(c))
 		errx(1, "failed to connect to X server");
-
 #ifdef HAVE_PLEDGE
 	pledge("stdio", NULL);
-#endif
-
+#endif /* HAVE_PLEDGE */
 	load_pixman_images(options);
 
 	it = xcb_setup_roots_iterator(xcb_get_setup(c));
