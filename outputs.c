@@ -125,6 +125,12 @@ get_randr_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 		outputs[i].y = crtc_reply->y;
 		outputs[i].width = crtc_reply->width;
 		outputs[i].height = crtc_reply->height;
+
+#ifdef DEBUG
+		printf("output detected: %s, %dx%d+%d+%d\n", outputs[i].name,
+		    outputs[i].width, outputs[i].height, outputs[i].x,
+		    outputs[i].y);
+#endif /* DEBUG */
 	}
 
 	outputs[len].name = NULL;
@@ -132,6 +138,11 @@ get_randr_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 	outputs[len].y = 0;
 	outputs[len].width = screen->width_in_pixels;
 	outputs[len].height = screen->height_in_pixels;
+
+#ifdef DEBUG
+	printf("(randr) screen dimensions: %dx%d+%d+%d\n", outputs[len].width,
+	    outputs[len].height, outputs[len].x, outputs[len].y);
+#endif /* DEBUG */
 
 	return outputs;
 }
@@ -157,6 +168,11 @@ get_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 	outputs[0].y = 0;
 	outputs[0].width = screen->width_in_pixels;
 	outputs[0].height = screen->height_in_pixels;
+
+#ifdef DEBUG
+	printf("(no randr) screen dimensions: %dx%d+%d+%d\n",
+	    outputs[0].width, outputs[0].height, outputs[0].x, outputs[0].y);
+#endif /* DEBUG */
 
 	return outputs;
 }
