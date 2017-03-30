@@ -163,6 +163,10 @@ parse_options(char **argv)
 				warnx("missing argument for --output");
 				return NULL;
 			}
+			if (has_randr == 0) {
+				warnx("--no-randr conflicts with --output");
+				return NULL;
+			}
 			options = add_option(options, &count, last);
 			last.output = *argv;
 		} else if ((last.mode = parse_mode(*argv)) != -1) {
@@ -171,6 +175,12 @@ parse_options(char **argv)
 				return NULL;
 			}
 			last.filename = *argv;
+		} else if (strcmp(argv[0], "--no-randr") == 0) {
+			if (count > 0) {
+				warnx("--no-randr conflicts with --output");
+				return NULL;
+			}
+			has_randr = 0;
 		} else if (strcmp(argv[0], "--version") == 0) {
 			puts(VERSION);
 			exit(0);
@@ -180,6 +190,8 @@ parse_options(char **argv)
 		}
 		++argv;
 	}
+	if (has_randr == -1 && last.output == NULL)
+		last.output = "all";
 	options = add_option(options, &count, last);
 
 	if (count == 0)

@@ -15,7 +15,7 @@
 .SH NAME
 xsetwallpaper \- wallpaper setting utility for X
 .SH SYNOPSIS
-.B xsetwallpaper [--screen <screen>] [--output <output>] [--center <file>] [--maximize <file>] [--stretch <file>] [--tile <file>] [--zoom <file>] [--version]
+.B xsetwallpaper [--screen <screen>] [--no-randr] [--output <output>] [--center <file>] [--maximize <file>] [--stretch <file>] [--tile <file>] [--zoom <file>] [--version]
 .SH DESCRIPTION
 The
 .I xsetwallpaper
@@ -37,11 +37,14 @@ or out, depending on the dimensions of the input file and the screen. This
 option guarantees that the whole image is seen. If the ratio does not fit the
 screen, the remaining area is filled black. The image itself will be centered
 on screen.
+.IP "\fB--no-randr\fP
+Ignores individual outputs and uses the whole screen instead. This is the area
+that spans across all different outputs (monitors).
 .IP "\fB--output \fP \fIoutput\fP
 Specifies the output on which a subsequently supplied file shall be set as
 wallpaper. You can retrieve a list of outputs on your system by executing
-\fIxrandr(1)\fP. If no output is specified, the virtual desktop will be used,
-which is the maximum area spaning across the different outputs (monitors).
+\fIxrandr(1)\fP. If no output is specified, all outputs will be modified
+individually.
 The special keyword \fIall\fP will repeat subsequent actions on all displays.
 .IP "\fB--screen \fP \fIscreen\fP
 Specifies a screen by its screen number. Normally all screens of an X display
@@ -67,24 +70,24 @@ If multiple contradicting options were given, the last supplied option wins.
 It is also possible to repeat output arguments without any subsequent files.
 In that case, the last mode and file will be re-used.
 .SH EXAMPLES
-Centers a PNG file as a wallpaper on LVDS1:
+Centers a PNG file as a wallpaper on LVDS-1:
 .RS
-xsetwallpaper --output LVDS1 --center file.png
+xsetwallpaper --output LVDS-1 --center file.png
 .RE
 .PP
 Tiles a PNG file as a wallpaper across all outputs:
 .RS
-xsetwallpaper --tile file.png
+xsetwallpaper --no-randr --tile file.png
 .RE
 .PP
 Zooms into a JPEG file as a wallpaper on each output individually:
 .RS
-xsetwallpaper --zoom all --tile file.jpg
+xsetwallpaper --zoom file.jpg
 .RE
 .PP
-Tiles a JPEG file as a wallpaper on VGA1 and zooms into a PNG file on LVDS1:
+Tiles a JPEG file as a wallpaper on VGA-1 and zooms into a PNG file on LVDS-1:
 .RS
-xsetwallpaper --output VGA1 --tile file.jpg --output LVDS1 --zoom file.png
+xsetwallpaper --output VGA-1 --tile file.jpg --output LVDS-1 --zoom file.png
 .RE
 .SH BUGS
 Use the GitHub issue tracker: https://github.com/stoeckmann/xsetwallpaper/issues

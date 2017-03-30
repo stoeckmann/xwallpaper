@@ -61,6 +61,8 @@ typedef struct wp_output {
 	uint16_t width, height;
 } wp_output_t;
 
+extern int	 has_randr;
+
 void		 free_outputs(wp_output_t *);
 wp_output_t	*get_output(wp_output_t *, char *);
 wp_output_t	*get_outputs(xcb_connection_t *, xcb_screen_t *);

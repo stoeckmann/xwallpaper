@@ -34,7 +34,7 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-"usage: xsetwallpaper [-screen <screen>] [--output <output>]\n"
+"usage: xsetwallpaper [-screen <screen>] [--no-randr] [--output <output>]\n"
 "  [--center <file>] [--maximize <file>]  [--stretch <file>]\n"
 "  [--tile <file>] [--zoom <file>] [--version]\n");
 	exit(1);

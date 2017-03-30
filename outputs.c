@@ -19,7 +19,7 @@
 #include <xcb/xcb.h>
 #ifdef WITH_RANDR
   #include <xcb/randr.h>
-#endif
+#endif /* WITH_RANDR */
 
 #include <err.h>
 #include <stdio.h>
@@ -27,6 +27,12 @@
 #include <string.h>
 
 #include "functions.h"
+
+#ifdef WITH_RANDR
+int has_randr = -1;
+#else
+int has_randr = 0;
+#endif /* WITH_RANDR */
 
 void
 free_outputs(wp_output_t *outputs)
@@ -150,7 +156,6 @@ get_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 {
 	wp_output_t *outputs;
 #ifdef WITH_RANDR
-	static int has_randr = -1;
 
 	if (has_randr == -1)
 		has_randr = check_randr(c);
