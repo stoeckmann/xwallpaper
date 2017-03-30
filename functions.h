@@ -29,6 +29,16 @@
 #define MODE_TILE	4
 #define MODE_ZOOM	5
 
+#ifdef DEBUG
+  #define PRINT_DEBUG 1
+#else
+  #define PRINT_DEBUG 0
+#endif /* DEBUG */
+
+#define DBG(fmt, ...) do {						 \
+	if (PRINT_DEBUG) fprintf(stderr, fmt, ##__VA_ARGS__);		 \
+} while (0)
+
 #define SAFE_MUL(res, x, y) do {					 \
         if ((y) != 0 && SIZE_MAX / (y) < (x))				 \
                 errx(1, "memory allocation would exceed system limits"); \
