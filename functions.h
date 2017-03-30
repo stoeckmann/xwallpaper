@@ -30,14 +30,12 @@
 #define MODE_ZOOM	5
 
 #ifdef DEBUG
-  #define PRINT_DEBUG 1
+  #define DBG(fmt, ...) do {			\
+	fprintf(stderr, fmt, ##__VA_ARGS__);	\
+  } while (0)
 #else
-  #define PRINT_DEBUG 0
+  #define DBG(fmt, ...)
 #endif /* DEBUG */
-
-#define DBG(fmt, ...) do {						 \
-	if (PRINT_DEBUG) fprintf(stderr, fmt, ##__VA_ARGS__);		 \
-} while (0)
 
 #define SAFE_MUL(res, x, y) do {					 \
         if ((y) != 0 && SIZE_MAX / (y) < (x))				 \
@@ -45,9 +43,9 @@
         res = (x) * (y);						 \
 } while (0)
 
-#define SAFE_MUL3(res, x, y, z) do {					 \
-	SAFE_MUL(res, (x), (z));					 \
-	SAFE_MUL(res, res, (y));					 \
+#define SAFE_MUL3(res, x, y, z) do {	\
+	SAFE_MUL(res, (x), (z));	\
+	SAFE_MUL(res, res, (y));	\
 } while (0)
 
 typedef struct wp_buffer {
