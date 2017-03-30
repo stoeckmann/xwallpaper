@@ -282,6 +282,8 @@ put_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
 		sub_height = max_height;
 		sub = xcb_image_create_native(c, xcb_image->width, sub_height,
 		    XCB_IMAGE_FORMAT_Z_PIXMAP, 32, NULL, ~0, NULL);
+		if (sub == NULL)
+			errx(1, "failed to create xcb image");
 		sub->data = xcb_image->data;
 
 		for (h = 0; h < xcb_image->height; h += max_height) {
@@ -295,6 +297,8 @@ put_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
 				    xcb_image->width, sub_height,
 				    XCB_IMAGE_FORMAT_Z_PIXMAP, 32, NULL, ~0,
 				    NULL);
+				if (sub == NULL)
+					errx(1, "failed to create xcb image");
 				sub->data = data;
 			}
 			DBG("sub image (%dx%d+0+%d) to %s (%dx%d+%d+%d)\n",
@@ -340,7 +344,7 @@ process_output(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
 	xcb_image = xcb_image_create_native(c, output->width, output->height,
 	    XCB_IMAGE_FORMAT_Z_PIXMAP, 32, NULL, len, (uint8_t *) pixels);
 	if (xcb_image == NULL)
-		errx(1, "failed to create temporary xcb image");
+		errx(1, "failed to create xcb image");
 
 	put_wallpaper(c, screen, output, xcb_image, pixmap, gc);
 
