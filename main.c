@@ -283,20 +283,14 @@ put_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
 		    0, screen->root_depth, xcb_image->size, xcb_image->data);
 	} else {
 		xcb_image_t *sub;
-		uint32_t max_height, row_len, sub_height, sub_len;
-		size_t size;
+		uint32_t max_height, sub_height;
 #ifdef DEBUG
 		printf("sending image in chunks\n");
 #endif /* DEBUG */
 		/* adjust for better performance */
 		max_height = get_max_rows_per_request(c, xcb_image, 65536);
-		row_len = (xcb_image->stride + xcb_image->scanline_pad - 1) &
-		    -xcb_image->scanline_pad;
 
-		size = xcb_image->size;
-		SAFE_MUL(sub_len, max_height, row_len);
 		sub_height = max_height;
-
 		sub = xcb_image_create_native(c, xcb_image->width, sub_height,
 		    XCB_IMAGE_FORMAT_Z_PIXMAP, 32, NULL, ~0, NULL);
 		sub->data = xcb_image->data;
@@ -306,7 +300,6 @@ put_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
 				uint8_t *data;
 
 				sub_height = xcb_image->height - h;
-				SAFE_MUL(sub_len, sub_height, row_len);
 				data = sub->data;
 				xcb_image_destroy(sub);
 				sub = xcb_image_create_native(c,
@@ -378,6 +371,7 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 	wp_output_t *outputs, tile_output;
 	wp_option_t *option;
 	uint16_t width, height;
+	xcb_rectangle_t rectangle;
 
 	/* let X perform non-randr tiling if requested */
 	if (options[0].mode == MODE_TILE && options[0].output == NULL &&
@@ -407,8 +401,11 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 	    height);
 	gc = xcb_generate_id(c);
 	xcb_create_gc(c, gc, pixmap, 0, NULL);
-	xcb_rectangle_t rect[4] = { 0, 0, width, height};
-	xcb_poly_fill_rectangle(c, pixmap, gc, 4, rect);
+	rectangle.x = 0;
+	rectangle.y = 0;
+	rectangle.width = width;
+	rectangle.height = height;
+	xcb_poly_fill_rectangle(c, pixmap, gc, 1, &rectangle);
 
 	for (option = options; option->filename != NULL; option++) {
 		wp_output_t *output;
