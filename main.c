@@ -256,6 +256,8 @@ set_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, xcb_image_t *xcb_image)
 {
 	xcb_pixmap_t pixmap;
 	xcb_gcontext_t gc;
+	uint32_t h, max_len, max_req_len, row_len, max_height;
+	uint8_t *pixels;
 
 	pixmap = xcb_generate_id(c);
 	xcb_create_pixmap(c, screen->root_depth, pixmap, screen->root,
@@ -264,9 +266,59 @@ set_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, xcb_image_t *xcb_image)
 	gc = xcb_generate_id(c);
 	xcb_create_gc(c, gc, pixmap, 0, NULL);
 
-	xcb_put_image(c, xcb_image->format, pixmap, gc, xcb_image->width,
-	    xcb_image->height, 0, 0, 0, screen->root_depth, xcb_image->size,
-	    xcb_image->data);
+	max_req_len = xcb_get_maximum_request_length(c);
+	max_len = (max_req_len > UINT32_MAX / 4 ? UINT32_MAX / 4 : max_req_len) * 4;
+	if (max_len <= sizeof(xcb_put_image_request_t))
+		errx(1, "unable to put image on X server");
+	max_len -= sizeof(xcb_put_image_request_t);
+	row_len = (xcb_image->stride + xcb_image->scanline_pad - 1) &
+	    -xcb_image->scanline_pad;
+	max_height = max_len / row_len;
+#ifdef DEBUG
+	printf("put image request parameters:\n"
+	    "maximum request length allowed for server (32 bits): %u\n"
+	    "maximum length for row data: %u\n"
+	    "length of rows in image: %u\n"
+	    "maximum height to send: %u\n",
+	    max_req_len, max_len, row_len, max_height);
+
+	printf("xcb image dimensions: %dx%d\n", xcb_image->width,
+	    xcb_image->height);
+#endif /* DEBUG */
+	if (max_height > xcb_image->height) {
+#ifdef DEBUG
+		printf("sending image at once\n");
+#endif /* DEBUG */
+		xcb_put_image(c, xcb_image->format, pixmap, gc,
+		    xcb_image->width, xcb_image->height, 0, 0, 0,
+		    screen->root_depth, xcb_image->size, xcb_image->data);
+	} else {
+#ifdef DEBUG
+		printf("sending sub images\n");
+#endif /* DEBUG */
+		for (h = 0; h < xcb_image->height; h += max_height) {
+			uint32_t sub_len, sub_height;
+			xcb_image_t *sub;
+
+			sub_height = xcb_image->height - h < max_height ?
+			    xcb_image->height - h : max_height;
+			SAFE_MUL(sub_len, sub_height, row_len);
+			if ((pixels = calloc(sub_len, 1)) == NULL)
+				err(1, "failed to allocate memory");
+			sub = xcb_image_subimage(xcb_image, 0, h,
+			    xcb_image->width, sub_height, pixels, sub_len,
+			    pixels);
+#ifdef DEBUG
+			printf("sub image dimensions: %dx%d+0+%d\n",
+			    sub->width, sub->height, h);
+#endif /* DEBUG */
+			xcb_put_image(c, sub->format, pixmap, gc,
+			    sub->width, sub->height, 0, h, 0,
+			    screen->root_depth, sub->size, sub->data);
+
+			xcb_image_destroy(sub);
+		}
+	}
 
 	xcb_change_window_attributes(c, screen->root, XCB_CW_BACK_PIXMAP,
 	    &pixmap);
