@@ -78,12 +78,11 @@ tile(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 #ifdef DEBUG
 			printf("tiling %s for %s (area %dx%d+%d+%d)\n",
 			    option->filename, output->name != NULL ?
-			    output->name : "screen", w, h, output->x + off_x,
-			    output->y + off_y);
+			    output->name : "screen", w, h, off_x, off_y);
 #endif /* DEBUG */
 			pixman_image_composite(PIXMAN_OP_CONJOINT_SRC,
 			    pixman_image, NULL, dest, 0, 0, 0, 0,
-			    output->x + off_x, output->y + off_y, w, h);
+			    off_x, off_y, w, h);
 		}
 	}
 }
@@ -142,10 +141,10 @@ transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 #ifdef DEBUG
 	printf("compositing %s for %s (area %dx%d+%d+%d) (mode %d)\n",
 	    option->filename, output->name != NULL ? output->name : "screen",
-	    output->width, output->height, output->x, output->y, option->mode);
+	    output->width, output->height, 0, 0, option->mode);
 #endif /* DEBUG */
 	pixman_image_composite(PIXMAN_OP_CONJOINT_SRC, pixman_image, NULL, dest,
-	    0, 0, 0, 0, output->x, output->y, output->width, output->height);
+	    0, 0, 0, 0, 0, 0, output->width, output->height);
 }
 
 static pixman_image_t *
@@ -180,16 +179,6 @@ load_pixman_images(wp_option_t *options)
 				errx(1, "%s has illegal dimensions",
 				    option->filename);
 		}
-}
-
-static void
-process_output(wp_output_t *output, pixman_image_t *pixman_bits,
-    wp_option_t *option)
-{
-	if (option->mode == MODE_TILE)
-		tile(pixman_bits, output, option);
-	else
-		transform(pixman_bits, output, option);
 }
 
 static void
@@ -246,29 +235,21 @@ update_atoms(xcb_connection_t *c, xcb_screen_t *screen, xcb_pixmap_t pixmap)
 	}
 }
 
-static void
-set_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, xcb_image_t *xcb_image)
+static uint32_t
+get_max_rows_per_request(xcb_connection_t *c, xcb_image_t *image, uint32_t n)
 {
-	xcb_pixmap_t pixmap;
-	xcb_gcontext_t gc;
-	uint32_t h, max_len, max_req_len, row_len, max_height;
-	uint8_t *pixels;
-
-	pixmap = xcb_generate_id(c);
-	xcb_create_pixmap(c, screen->root_depth, pixmap, screen->root,
-	    xcb_image->width, xcb_image->height);
-
-	gc = xcb_generate_id(c);
-	xcb_create_gc(c, gc, pixmap, 0, NULL);
+	uint32_t max_len, max_req_len, row_len, max_height;
 
 	max_req_len = xcb_get_maximum_request_length(c);
-	max_len = (max_req_len > UINT32_MAX / 4 ? UINT32_MAX / 4 : max_req_len) * 4;
+	max_len = (max_req_len > n ? n : max_req_len) * 4;
 	if (max_len <= sizeof(xcb_put_image_request_t))
 		errx(1, "unable to put image on X server");
 	max_len -= sizeof(xcb_put_image_request_t);
-	row_len = (xcb_image->stride + xcb_image->scanline_pad - 1) &
-	    -xcb_image->scanline_pad;
+	row_len = (image->stride + image->scanline_pad - 1) &
+	    -image->scanline_pad;
 	max_height = max_len / row_len;
+	if (max_height < 1)
+		errx(1, "unable to put image on X server");
 #ifdef DEBUG
 	printf("put image request parameters:\n"
 	    "maximum request length allowed for server (32 bits): %u\n"
@@ -276,64 +257,127 @@ set_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, xcb_image_t *xcb_image)
 	    "length of rows in image: %u\n"
 	    "maximum height to send: %u\n",
 	    max_req_len, max_len, row_len, max_height);
-
-	printf("xcb image dimensions: %dx%d\n", xcb_image->width,
-	    xcb_image->height);
 #endif /* DEBUG */
-	if (max_height > xcb_image->height) {
+	return max_height;
+}
+
+static void
+put_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
+    xcb_image_t *xcb_image, xcb_pixmap_t pixmap, xcb_gcontext_t gc)
+{
+	uint32_t h, max_height;
+
+	max_height = get_max_rows_per_request(c, xcb_image, UINT32_MAX / 4);
+#ifdef DEBUG
+	printf("xcb image (%dx%d) to %s (%dx%d+%d+%d)\n",
+	    xcb_image->width, xcb_image->height,
+	    output->name != NULL ? output->name : "screen", output->width,
+	    output->height, output->x, output->y);
+#endif /* DEBUG */
+	if (max_height >= xcb_image->height) {
 #ifdef DEBUG
 		printf("sending image at once\n");
 #endif /* DEBUG */
 		xcb_put_image(c, xcb_image->format, pixmap, gc,
-		    xcb_image->width, xcb_image->height, 0, 0, 0,
-		    screen->root_depth, xcb_image->size, xcb_image->data);
+		    xcb_image->width, xcb_image->height, output->x, output->y,
+		    0, screen->root_depth, xcb_image->size, xcb_image->data);
 	} else {
+		xcb_image_t *sub;
+		uint32_t max_height, row_len, sub_height, sub_len;
+		size_t size;
 #ifdef DEBUG
-		printf("sending sub images\n");
+		printf("sending image in chunks\n");
 #endif /* DEBUG */
-		for (h = 0; h < xcb_image->height; h += max_height) {
-			uint32_t sub_len, sub_height;
-			xcb_image_t *sub;
+		/* adjust for better performance */
+		max_height = get_max_rows_per_request(c, xcb_image, 65536);
+		row_len = (xcb_image->stride + xcb_image->scanline_pad - 1) &
+		    -xcb_image->scanline_pad;
 
-			sub_height = xcb_image->height - h < max_height ?
-			    xcb_image->height - h : max_height;
-			SAFE_MUL(sub_len, sub_height, row_len);
-			if ((pixels = calloc(sub_len, 1)) == NULL)
-				err(1, "failed to allocate memory");
-			sub = xcb_image_subimage(xcb_image, 0, h,
-			    xcb_image->width, sub_height, pixels, sub_len,
-			    pixels);
+		size = xcb_image->size;
+		SAFE_MUL(sub_len, max_height, row_len);
+		sub_height = max_height;
+
+		sub = xcb_image_create_native(c, xcb_image->width, sub_height,
+		    XCB_IMAGE_FORMAT_Z_PIXMAP, 32, NULL, ~0, NULL);
+		sub->data = xcb_image->data;
+
+		for (h = 0; h < xcb_image->height; h += max_height) {
+			if (xcb_image->height - h < max_height) {
+				uint8_t *data;
+
+				sub_height = xcb_image->height - h;
+				SAFE_MUL(sub_len, sub_height, row_len);
+				data = sub->data;
+				xcb_image_destroy(sub);
+				sub = xcb_image_create_native(c,
+				    xcb_image->width, sub_height,
+				    XCB_IMAGE_FORMAT_Z_PIXMAP, 32, NULL, ~0,
+				    NULL);
+				sub->data = data;
+			}
 #ifdef DEBUG
-			printf("sub image dimensions: %dx%d+0+%d\n",
-			    sub->width, sub->height, h);
+			printf("sub image (%dx%d+0+%d) to %s (%dx%d+%d+%d)\n",
+			    sub->width, sub->height, h,
+			    output->name != NULL ? output->name : "screen",
+			    sub->width, sub_height, output->x,
+			    output->y + h);
 #endif /* DEBUG */
 			xcb_put_image(c, sub->format, pixmap, gc,
-			    sub->width, sub->height, 0, h, 0,
-			    screen->root_depth, sub->size, sub->data);
+			    sub->width, sub->height, output->x,
+			    output->y + h, 0, screen->root_depth,
+			    sub->size, sub->data);
 
-			xcb_image_destroy(sub);
+			sub->data += xcb_image->stride * sub_height;
 		}
+
+		xcb_image_destroy(sub);
 	}
+}
 
-	xcb_change_window_attributes(c, screen->root, XCB_CW_BACK_PIXMAP,
-	    &pixmap);
+static void
+process_output(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
+    wp_option_t *option, xcb_pixmap_t pixmap, xcb_gcontext_t gc)
+{
+	uint32_t *pixels;
+	size_t len, stride;
+	xcb_image_t *xcb_image;
+	pixman_image_t *pixman_image;
 
-	update_atoms(c, screen, pixmap);
+	SAFE_MUL(stride, output->width, sizeof(*pixels));
+	SAFE_MUL(len, output->height, stride);
+	pixels = xmalloc(len);
 
-	xcb_clear_area(c, 0, screen->root, 0, 0, 0, 0);
+	pixman_image = pixman_image_create_bits(PIXMAN_a8r8g8b8, output->width,
+	    output->height, pixels, stride);
+	if (pixman_image == NULL)
+		errx(1, "failed to create temporary pixman image");
+
+	if (option->mode == MODE_TILE)
+		tile(pixman_image, output, option);
+	else
+		transform(pixman_image, output, option);
+
+	xcb_image = xcb_image_create_native(c, output->width, output->height,
+	    XCB_IMAGE_FORMAT_Z_PIXMAP, 32, NULL, len, (uint8_t *) pixels);
+	if (xcb_image == NULL)
+		errx(1, "failed to create temporary xcb image");
+
+	put_wallpaper(c, screen, output, xcb_image, pixmap, gc);
+
+	xcb_image_destroy(xcb_image);
+	pixman_image_unref(pixman_image);
+	free(pixels);
 }
 
 static void
 process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
     wp_option_t *options)
 {
+	xcb_pixmap_t pixmap;
+	xcb_gcontext_t gc;
 	wp_output_t *outputs, tile_output;
 	wp_option_t *option;
 	uint16_t width, height;
-	xcb_image_t *xcb_image;
-	uint32_t *pixels;
-	pixman_image_t *pixman_root;
-	size_t len, stride;
 
 	/* let X perform non-randr tiling if requested */
 	if (options[0].mode == MODE_TILE && options[0].output == NULL &&
@@ -355,15 +399,16 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 		outputs = get_outputs(c, screen);
 	}
 
-	SAFE_MUL(stride, width, sizeof(*pixels));
-	SAFE_MUL(len, height, stride);
-	if ((pixels = calloc(len, 1)) == NULL)
-		err(1, "failed to allocate memory");
-
-	pixman_root = pixman_image_create_bits(PIXMAN_a8r8g8b8, width, height,
-	    pixels, stride);
-	if (pixman_root == NULL)
-		errx(1, "failed to create temporary pixman image");
+#ifdef DEBUG
+	printf("creating pixmap (%dx%d)\n", width, height);
+#endif /* DEBUG */
+	pixmap = xcb_generate_id(c);
+	xcb_create_pixmap(c, screen->root_depth, pixmap, screen->root, width,
+	    height);
+	gc = xcb_generate_id(c);
+	xcb_create_gc(c, gc, pixmap, 0, NULL);
+	xcb_rectangle_t rect[4] = { 0, 0, width, height};
+	xcb_poly_fill_rectangle(c, pixmap, gc, 4, rect);
 
 	for (option = options; option->filename != NULL; option++) {
 		wp_output_t *output;
@@ -375,21 +420,21 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 		if (option->output != NULL &&
 		    strcmp(option->output, "all") == 0)
 			for (output = outputs; output->name != NULL; output++)
-				process_output(output, pixman_root, option);
+				process_output(c, screen, output, option,
+				    pixmap, gc);
 		else {
 			output = get_output(outputs, option->output);
 			if (output != NULL)
-				process_output(output, pixman_root, option);
+				process_output(c, screen, output, option,
+				    pixmap, gc);
 		}
 	}
 
-	xcb_image = xcb_image_create_native(c, width, height,
-	    XCB_IMAGE_FORMAT_Z_PIXMAP, 32, NULL, len, (uint8_t *) pixels);
-	set_wallpaper(c, screen, xcb_image);
+	xcb_change_window_attributes(c, screen->root, XCB_CW_BACK_PIXMAP,
+	    &pixmap);
+	update_atoms(c, screen, pixmap);
+	xcb_clear_area(c, 0, screen->root, 0, 0, 0, 0);
 
-	xcb_image_destroy(xcb_image);
-	pixman_image_unref(pixman_root);
-	free(pixels);
 	if (outputs != &tile_output)
 		free_outputs(outputs);
 }
