@@ -121,7 +121,7 @@ get_randr_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 		name_len = xcb_randr_get_output_info_name_length(output_reply);
 
 		outputs[j].name = xmalloc(name_len + 1);
-		memcpy(outputs[i].name, name, name_len);
+		memcpy(outputs[j].name, name, name_len);
 		outputs[j].name[name_len] = '\0';
 
 		outputs[j].x = crtc_reply->x;
