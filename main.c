@@ -198,7 +198,7 @@ put_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
     xcb_image_t *xcb_image, xcb_pixmap_t pixmap, xcb_gcontext_t gc)
 {
 	uint8_t *data;
-	uint32_t h, max_height, sub_height;
+	uint32_t h, max_height, row_len, sub_height;
 	xcb_image_t *sub;
 
 	DBG("xcb image (%dx%d) to %s (%dx%d+%d+%d)\n",
@@ -223,6 +223,9 @@ put_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
 		sub_height = xcb_image->height;
 	}
 
+	row_len = (xcb_image->stride + xcb_image->scanline_pad - 1) &
+	    -xcb_image->scanline_pad;
+
 	data = xcb_image->data;
 	for (h = 0; h < xcb_image->height; h += sub_height) {
 		if (sub_height > xcb_image->height - h) {
@@ -245,7 +248,7 @@ put_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
 		    output->y + h, 0, screen->root_depth,
 		    sub->size, data);
 
-		data += xcb_image->stride * sub_height;
+		data += row_len * sub_height;
 	}
 
 	if (sub != xcb_image)
