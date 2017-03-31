@@ -75,6 +75,7 @@ tile(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 				w = output->width - off_x;
 			else
 				w = pixman_width;
+
 			DBG("tiling %s for %s (area %dx%d+%d+%d)\n",
 			    option->filename, output->name != NULL ?
 			    output->name : "screen", w, h, off_x, off_y);
@@ -136,7 +137,8 @@ transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 	pixman_image_set_filter(pixman_image, filter, NULL, 0);
 	pixman_transform_from_pixman_f_transform(&transform, &ftransform);
 	pixman_image_set_transform(pixman_image, &transform);
-	DBG("compositing %s for %s (area %dx%d+%d+%d) (mode %d)\n",
+
+	DBG("composing %s for %s (area %dx%d+%d+%d) (mode %d)\n",
 	    option->filename, output->name != NULL ? output->name : "screen",
 	    output->width, output->height, 0, 0, option->mode);
 	pixman_image_composite(PIXMAN_OP_CONJOINT_SRC, pixman_image, NULL, dest,

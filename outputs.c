@@ -100,7 +100,7 @@ get_randr_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 		xcb_randr_get_output_info_reply_t *output_reply;
 		xcb_randr_get_crtc_info_cookie_t crtc_cookie;
 		xcb_randr_get_crtc_info_reply_t *crtc_reply;
-		int crtc_len, name_len;
+		int name_len;
 		uint8_t *name;
 
 		output_cookie = xcb_randr_get_output_info(c, xcb_outputs[i],
@@ -150,7 +150,6 @@ get_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 {
 	wp_output_t *outputs;
 #ifdef WITH_RANDR
-
 	if (has_randr == -1)
 		has_randr = check_randr(c);
 	if (has_randr)
