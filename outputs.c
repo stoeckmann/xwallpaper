@@ -54,7 +54,7 @@ get_output(wp_output_t *outputs, char *name)
 			return output;
 
 	if (name != NULL) {
-		warnx("output %s was not found, ignoring", name);
+		warnx("output %s was not found/disconnected, ignoring", name);
 		return NULL;
 	}
 
@@ -79,7 +79,7 @@ get_randr_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 	xcb_randr_get_screen_resources_cookie_t resources_cookie;
 	xcb_randr_get_screen_resources_reply_t *resources_reply;
 	xcb_randr_output_t *xcb_outputs;
-	int i;
+	int i, j;
 	size_t n;
 
 	resources_cookie = xcb_randr_get_screen_resources(c, screen->root);
@@ -94,6 +94,7 @@ get_randr_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 	SAFE_MUL(n, (size_t)len + 1, sizeof(*outputs));
 	outputs = xmalloc(n);
 
+	j = 0;
 	for (i = 0; i < len; i++) {
 		xcb_randr_get_output_info_cookie_t output_cookie;
 		xcb_randr_get_output_info_reply_t *output_reply;
@@ -108,41 +109,45 @@ get_randr_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 		output_reply = xcb_randr_get_output_info_reply(c, output_cookie,
 		    NULL);
 
+		if (output_reply->connection != XCB_RANDR_CONNECTION_CONNECTED)
+			continue;
+
 		name = xcb_randr_get_output_info_name(output_reply);
 		name_len = xcb_randr_get_output_info_name_length(output_reply);
 
 		crtc = xcb_randr_get_output_info_crtcs(output_reply);
 		crtc_len = xcb_randr_get_output_info_crtcs_length(output_reply);
 
-		outputs[i].name = xmalloc(name_len + 1);
+		outputs[j].name = xmalloc(name_len + 1);
 		memcpy(outputs[i].name, name, name_len);
-		outputs[i].name[name_len] = '\0';
+		outputs[j].name[name_len] = '\0';
 
 		if (crtc_len < 1)
 			errx(1, "failed to retrieve CRTCs for output %s",
-			    outputs[i].name);
+			    outputs[j].name);
 
 		crtc_cookie = xcb_randr_get_crtc_info(c, crtc[0],
 		    XCB_CURRENT_TIME);
 		crtc_reply = xcb_randr_get_crtc_info_reply(c, crtc_cookie,
 		    NULL);
 
-		outputs[i].x = crtc_reply->x;
-		outputs[i].y = crtc_reply->y;
-		outputs[i].width = crtc_reply->width;
-		outputs[i].height = crtc_reply->height;
-		DBG("output detected: %s, %dx%d+%d+%d\n", outputs[i].name,
-		    outputs[i].width, outputs[i].height, outputs[i].x,
-		    outputs[i].y);
+		outputs[j].x = crtc_reply->x;
+		outputs[j].y = crtc_reply->y;
+		outputs[j].width = crtc_reply->width;
+		outputs[j].height = crtc_reply->height;
+		DBG("output detected: %s, %dx%d+%d+%d\n", outputs[j].name,
+		    outputs[j].width, outputs[j].height, outputs[j].x,
+		    outputs[j].y);
+		j++;
 	}
 
-	outputs[len].name = NULL;
-	outputs[len].x = 0;
-	outputs[len].y = 0;
-	outputs[len].width = screen->width_in_pixels;
-	outputs[len].height = screen->height_in_pixels;
-	DBG("(randr) screen dimensions: %dx%d+%d+%d\n", outputs[len].width,
-	    outputs[len].height, outputs[len].x, outputs[len].y);
+	outputs[j].name = NULL;
+	outputs[j].x = 0;
+	outputs[j].y = 0;
+	outputs[j].width = screen->width_in_pixels;
+	outputs[j].height = screen->height_in_pixels;
+	DBG("(randr) screen dimensions: %dx%d+%d+%d\n", outputs[j].width,
+	    outputs[j].height, outputs[j].x, outputs[j].y);
 	return outputs;
 }
 #endif /* WITH_RANDR */
