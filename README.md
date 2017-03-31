@@ -12,9 +12,9 @@ backgrounds.
 The aim of this project is to create a minimalistic wallpaper utility which
 focuses on the most common use cases.
 
-It directly depends on libraries which are used by X, like libxcb and libpng,
-and therefore has no further dependencies on projects which are not already on
-your system due to having a basic X environment.
+It directly depends on libraries which are used by X, like libxcb, and
+therefore has no further hard dependencies on projects which are not already
+on your system due to having a basic X environment.
 
 The last but not least focus of this project is to write a secure wallpaper
 utility, supporting very tight sandboxing mechanisms. A careful approach right
