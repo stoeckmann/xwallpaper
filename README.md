@@ -1,8 +1,8 @@
 # xsetwallpaper
 
 The xsetwallpaper utility allows you to set image files as your X wallpaper.
-JPEG and PNG file formats are supported, both being configurable and therefore
-no fixed dependencies.
+JPEG, PNG, and XPM file formats are supported, all of them being configurable
+and therefore no fixed dependencies.
 
 The wallpaper is also advertised to programs which support semi-transparent
 backgrounds.
@@ -30,9 +30,10 @@ Building and installing is as simple as:
     make
     make install
 
-If your system has libjpeg installed, JPEG support is activated. The same is
-true for libpng and PNG support. If you compile for OpenBSD, the system call
-pledge is supported as well.
+To support all file formats, your system needs libjpeg, libpng and libXpm.
+If one of the libraries is not found, the specific file format will not be
+supported. Also, if you compile for OpenBSD, the system call pledge is
+automatically used.
 
 ## License
 

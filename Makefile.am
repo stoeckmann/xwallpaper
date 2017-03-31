@@ -29,4 +29,12 @@ else
 EXTRA_DIST += load_png.c
 endif
 
+if BUILD_XPM
+xsetwallpaper_SOURCES += load_xpm.c
+xsetwallpaper_CPPFLAGS += @XPM_CFLAGS@
+xsetwallpaper_LDADD += @XPM_LIBS@
+else
+EXTRA_DIST += load_xpm.c
+endif
+
 AM_CFLAGS = $(CWARNFLAGS)

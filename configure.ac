@@ -88,7 +88,7 @@ AM_CONDITIONAL(BUILD_JPEG, [test "$jpeg_ok" = yes])
 
 # Check if PNG support is requested
 AC_MSG_CHECKING(whether PNG support is requested)
-AC_ARG_WITH([jpeg],
+AC_ARG_WITH([png],
   [AS_HELP_STRING([--without-png], [disable PNG support])],
   [
    if test "$withval" = no ; then
@@ -109,6 +109,30 @@ AS_IF([test "$png_ok" = yes],
   [AC_DEFINE(WITH_PNG,[],[Define to 1 if you want PNG support.])],[]
 )
 AM_CONDITIONAL(BUILD_PNG, [test "$png_ok" = yes])
+
+# Check if XPM support is requested
+AC_MSG_CHECKING(whether XPM support is requested)
+AC_ARG_WITH([xpm],
+  [AS_HELP_STRING([--without-xpm], [disable XPM support])],
+  [
+   if test "$withval" = no ; then
+     xpm_support=no
+   else
+     xpm_support=yes
+   fi
+  ],
+  [ xpm_support=auto ]
+)
+AC_MSG_RESULT($xpm_support)
+if test "$xpm_support" != no ; then
+  PKG_CHECK_MODULES(XPM, xpm >= 3.5, [xpm_ok="yes"], [xpm_ok="no"])
+else
+  xpm_ok="no"
+fi
+AS_IF([test "$xpm_ok" = yes],
+  [AC_DEFINE(WITH_XPM,[],[Define to 1 if you want XPM support.])],[]
+)
+AM_CONDITIONAL(BUILD_XPM, [test "$xpm_ok" = yes])
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

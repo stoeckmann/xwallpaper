@@ -66,8 +66,11 @@ load_png(FILE *fp)
 	}
 
 	info_ptr = png_create_info_struct(png_ptr);
-	if (info_ptr == NULL)
-		errx(1, "failed to initialize png info");
+	if (info_ptr == NULL) {
+		DBG("failed to initialize png info");
+		png_destroy_read_struct(&png_ptr, NULL, NULL);
+		return NULL;
+	}
 
 	png_init_io(png_ptr, fp);
 

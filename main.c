@@ -55,7 +55,7 @@ get_max_rows_per_request(xcb_connection_t *c, xcb_image_t *image, uint32_t n)
 }
 
 static pixman_image_t *
-load_pixman_image(FILE *fp)
+load_pixman_image(xcb_connection_t *c, xcb_screen_t *screen, FILE *fp)
 {
 	pixman_image_t *pixman_image;
 
@@ -73,12 +73,19 @@ load_pixman_image(FILE *fp)
 		pixman_image = load_jpeg(fp);
 	}
 #endif /* WITH_JPEG */
+#ifdef WITH_XPM
+	if (pixman_image == NULL) {
+		rewind(fp);
+		pixman_image = load_xpm(c, screen, fp);
+	}
+#endif /* WITH_XPM */
 
 	return pixman_image;
 }
 
 static void
-load_pixman_images(wp_option_t *options)
+load_pixman_images(xcb_connection_t *c, xcb_screen_t *screen,
+    wp_option_t *options)
 {
 	wp_option_t *option;
 	pixman_image_t *img;
@@ -86,7 +93,7 @@ load_pixman_images(wp_option_t *options)
 	for (option = options; option->filename != NULL; option++)
 		if (option->buffer->pixman_image == NULL) {
 			DBG("loading %s\n", option->filename);
-			img = load_pixman_image(option->buffer->fp);
+			img = load_pixman_image(c, screen, option->buffer->fp);
 			if (img == NULL)
 				errx(1, "failed to parse %s", option->filename);
 			option->buffer->pixman_image = img;
@@ -455,9 +462,23 @@ main(int argc, char *argv[])
 #ifdef HAVE_PLEDGE
 	pledge("stdio", NULL);
 #endif /* HAVE_PLEDGE */
-	load_pixman_images(options);
 
 	it = xcb_setup_roots_iterator(xcb_get_setup(c));
+#ifdef WITH_XPM
+	/*
+	 * Needs a screen for possible XPM color parsing.
+	 * Technically this means that it has to be repeated for
+	 * every screen, but it's unlikely to even encounter a setup
+	 * which as multiple ones. Also the exact colors are parsed
+	 * on purpose, so I don't expect a difference.
+	 */
+	if (it.rem == 0)
+		errx(1, "no screen found");
+	load_pixman_images(c, it.data, options);
+#else
+	load_pixman_images(NULL, NULL, options);
+#endif /* WITH_XPM */
+
 	for (snum = 0; it.rem; snum++, xcb_screen_next(&it))
 		process_screen(c, it.data, snum, options);
 

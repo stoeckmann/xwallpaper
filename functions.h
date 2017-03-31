@@ -19,6 +19,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <err.h>
 #include <pixman.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -78,5 +79,6 @@ wp_output_t	*get_output(wp_output_t *, char *);
 wp_output_t	*get_outputs(xcb_connection_t *, xcb_screen_t *);
 pixman_image_t	*load_jpeg(FILE *);
 pixman_image_t	*load_png(FILE *);
+pixman_image_t	*load_xpm(xcb_connection_t *, xcb_screen_t *, FILE *);
 wp_option_t	*parse_options(char **);
 void		*xmalloc(size_t);

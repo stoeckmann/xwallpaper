@@ -161,7 +161,7 @@ load_jpeg(FILE *fp)
 			break;
 		default:
 			if (cinfo.output_components < 3)
-				errx(1, "failed to parse unknown color space");
+				longjmp(wp_err.env, 1);
 			cinfo.out_color_space = JCS_RGB;
 			scan_rgb(&cinfo, scanline, pixels);
 			break;
