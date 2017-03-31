@@ -100,7 +100,6 @@ get_randr_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 		xcb_randr_get_output_info_reply_t *output_reply;
 		xcb_randr_get_crtc_info_cookie_t crtc_cookie;
 		xcb_randr_get_crtc_info_reply_t *crtc_reply;
-		xcb_randr_crtc_t *crtc;
 		int crtc_len, name_len;
 		uint8_t *name;
 
@@ -109,27 +108,21 @@ get_randr_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 		output_reply = xcb_randr_get_output_info_reply(c, output_cookie,
 		    NULL);
 
-		if (output_reply->connection != XCB_RANDR_CONNECTION_CONNECTED)
+		if (output_reply->connection != XCB_RANDR_CONNECTION_CONNECTED ||
+		    output_reply->crtc == XCB_NONE)
 			continue;
+
+		crtc_cookie = xcb_randr_get_crtc_info(c, output_reply->crtc,
+		    XCB_CURRENT_TIME);
+		crtc_reply = xcb_randr_get_crtc_info_reply(c, crtc_cookie,
+		    NULL);
 
 		name = xcb_randr_get_output_info_name(output_reply);
 		name_len = xcb_randr_get_output_info_name_length(output_reply);
 
-		crtc = xcb_randr_get_output_info_crtcs(output_reply);
-		crtc_len = xcb_randr_get_output_info_crtcs_length(output_reply);
-
 		outputs[j].name = xmalloc(name_len + 1);
 		memcpy(outputs[i].name, name, name_len);
 		outputs[j].name[name_len] = '\0';
-
-		if (crtc_len < 1)
-			errx(1, "failed to retrieve CRTCs for output %s",
-			    outputs[j].name);
-
-		crtc_cookie = xcb_randr_get_crtc_info(c, crtc[0],
-		    XCB_CURRENT_TIME);
-		crtc_reply = xcb_randr_get_crtc_info_reply(c, crtc_cookie,
-		    NULL);
 
 		outputs[j].x = crtc_reply->x;
 		outputs[j].y = crtc_reply->y;
