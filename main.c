@@ -122,7 +122,7 @@ tile(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 
 	/*
 	 * Manually performs tiling to support separate modes per
-	 * screen with RandR. If possible, xsetwallpaper will let
+	 * screen with RandR. If possible, xwallpaper will let
 	 * X do the tiling natively.
          */
 	for (off_y = 0; off_y < output->height; off_y += pixman_height) {
@@ -437,7 +437,7 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-"usage: xsetwallpaper [-screen <screen>] [--no-randr] [--output <output>]\n"
+"usage: xwallpaper [-screen <screen>] [--no-randr] [--output <output>]\n"
 "  [--center <file>] [--maximize <file>]  [--stretch <file>]\n"
 "  [--tile <file>] [--zoom <file>] [--version]\n");
 	exit(1);

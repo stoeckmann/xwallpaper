@@ -11,14 +11,14 @@
 .\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-.TH XSETWALLPAPER 1 "xsetwallpaper 0.2.0" "XSETWALLPAPER"
+.TH XWALLPAPER 1 "xwallpaper 0.2.0" "XWALLPAPER"
 .SH NAME
-xsetwallpaper \- wallpaper setting utility for X
+xwallpaper \- wallpaper setting utility for X
 .SH SYNOPSIS
-.B xsetwallpaper [--screen <screen>] [--no-randr] [--output <output>] [--center <file>] [--maximize <file>] [--stretch <file>] [--tile <file>] [--zoom <file>] [--version]
+.B xwallpaper [--screen <screen>] [--no-randr] [--output <output>] [--center <file>] [--maximize <file>] [--stretch <file>] [--tile <file>] [--zoom <file>] [--version]
 .SH DESCRIPTION
 The
-.I xsetwallpaper
+.I xwallpaper
 program allows you to set image files as your X wallpaper. PNG file format
 is supported by default and preferred, but optional JPEG support exists as well.
 .PP
@@ -72,24 +72,24 @@ In that case, the last mode and file will be re-used.
 .SH EXAMPLES
 Centers a PNG file as a wallpaper on LVDS-1:
 .RS
-xsetwallpaper --output LVDS-1 --center file.png
+xwallpaper --output LVDS-1 --center file.png
 .RE
 .PP
 Tiles a PNG file as a wallpaper across all outputs:
 .RS
-xsetwallpaper --no-randr --tile file.png
+xwallpaper --no-randr --tile file.png
 .RE
 .PP
 Zooms into a JPEG file as a wallpaper on each output individually:
 .RS
-xsetwallpaper --zoom file.jpg
+xwallpaper --zoom file.jpg
 .RE
 .PP
 Tiles a JPEG file as a wallpaper on VGA-1 and zooms into a PNG file on LVDS-1:
 .RS
-xsetwallpaper --output VGA-1 --tile file.jpg --output LVDS-1 --zoom file.png
+xwallpaper --output VGA-1 --tile file.jpg --output LVDS-1 --zoom file.png
 .RE
 .SH BUGS
-Use the GitHub issue tracker: https://github.com/stoeckmann/xsetwallpaper/issues
+Use the GitHub issue tracker: https://github.com/stoeckmann/xwallpaper/issues
 .SH AUTHOR
 Tobias Stoeckmann <tobias@stoeckmann.org>
