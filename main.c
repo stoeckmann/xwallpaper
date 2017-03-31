@@ -30,14 +30,62 @@
 #define ATOM_ESETROOT "ESETROOT_PMAP_ID"
 #define ATOM_XSETROOT "_XROOTPMAP_ID"
 
-static void
-usage(void)
+static uint32_t
+get_max_rows_per_request(xcb_connection_t *c, xcb_image_t *image, uint32_t n)
 {
-	fprintf(stderr,
-"usage: xsetwallpaper [-screen <screen>] [--no-randr] [--output <output>]\n"
-"  [--center <file>] [--maximize <file>]  [--stretch <file>]\n"
-"  [--tile <file>] [--zoom <file>] [--version]\n");
-	exit(1);
+	uint32_t max_len, max_req_len, row_len, max_height;
+
+	max_req_len = xcb_get_maximum_request_length(c);
+	max_len = (max_req_len > n ? n : max_req_len) * 4;
+	if (max_len <= sizeof(xcb_put_image_request_t))
+		errx(1, "unable to put image on X server");
+	max_len -= sizeof(xcb_put_image_request_t);
+	row_len = (image->stride + image->scanline_pad - 1) &
+	    -image->scanline_pad;
+	max_height = max_len / row_len;
+	if (max_height < 1)
+		errx(1, "unable to put image on X server");
+	DBG("put image request parameters:\n"
+	    "maximum request length allowed for server (32 bits): %u\n"
+	    "maximum length for row data: %u\n"
+	    "length of rows in image: %u\n"
+	    "maximum height to send: %u\n",
+	    max_req_len, max_len, row_len, max_height);
+	return max_height;
+}
+
+static pixman_image_t *
+load_pixman_image(FILE *fp)
+{
+	pixman_image_t *pixman_image;
+
+	pixman_image = load_png(fp);
+#ifdef WITH_JPEG
+	if (pixman_image == NULL)
+		pixman_image = load_jpeg(fp);
+#endif /* WITH_JPEG */
+	if (pixman_image == NULL)
+		errx(1, "failed to parse input file");
+
+	return pixman_image;
+}
+
+static void
+load_pixman_images(wp_option_t *options)
+{
+	wp_option_t *option;
+	pixman_image_t *img;
+
+	for (option = options; option->filename != NULL; option++)
+		if (option->buffer->pixman_image == NULL) {
+			img = load_pixman_image(option->buffer->fp);
+			option->buffer->pixman_image = img;
+			fclose(option->buffer->fp);
+			if (pixman_image_get_width(img) > UINT16_MAX ||
+			    pixman_image_get_height(img) > UINT16_MAX)
+				errx(1, "%s has illegal dimensions",
+				    option->filename);
+		}
 }
 
 static void
@@ -145,118 +193,6 @@ transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 	    0, 0, 0, 0, 0, 0, output->width, output->height);
 }
 
-static pixman_image_t *
-load_pixman_image(FILE *fp)
-{
-	pixman_image_t *pixman_image;
-
-	pixman_image = load_png(fp);
-#ifdef WITH_JPEG
-	if (pixman_image == NULL)
-		pixman_image = load_jpeg(fp);
-#endif /* WITH_JPEG */
-	if (pixman_image == NULL)
-		errx(1, "failed to parse input file");
-
-	return pixman_image;
-}
-
-static void
-load_pixman_images(wp_option_t *options)
-{
-	wp_option_t *option;
-	pixman_image_t *img;
-
-	for (option = options; option->filename != NULL; option++)
-		if (option->buffer->pixman_image == NULL) {
-			img = load_pixman_image(option->buffer->fp);
-			option->buffer->pixman_image = img;
-			fclose(option->buffer->fp);
-			if (pixman_image_get_width(img) > UINT16_MAX ||
-			    pixman_image_get_height(img) > UINT16_MAX)
-				errx(1, "%s has illegal dimensions",
-				    option->filename);
-		}
-}
-
-static void
-update_atoms(xcb_connection_t *c, xcb_screen_t *screen, xcb_pixmap_t pixmap)
-{
-	int i;
-	xcb_intern_atom_cookie_t atom_cookie[2];
-	xcb_intern_atom_reply_t *atom_reply[2];
-	xcb_get_property_cookie_t property_cookie[2];
-	xcb_get_property_reply_t *property_reply[2];
-	xcb_pixmap_t *old[2];
-
-	atom_cookie[0] = xcb_intern_atom(c, 0,
-	    sizeof(ATOM_ESETROOT) - 1, ATOM_ESETROOT);
-	atom_cookie[1] = xcb_intern_atom(c, 0,
-	    sizeof(ATOM_XSETROOT) - 1, ATOM_XSETROOT);
-
-	for (i = 0; i < 2; i++)
-		atom_reply[i] = xcb_intern_atom_reply(c, atom_cookie[i], NULL);
-
-	for (i = 0; i < 2; i++)
-		if (atom_reply[i] != NULL)
-			property_cookie[i] = xcb_get_property(c, 0,
-			    screen->root, atom_reply[i]->atom, XCB_ATOM_PIXMAP,
-			    0, 1);
-
-	for (i = 0; i < 2; i++) {
-		if (atom_reply[i] != NULL)
-			property_reply[i] =
-			    xcb_get_property_reply(c, property_cookie[i], NULL);
-		else
-			property_reply[i] = NULL;
-		if (property_reply[i] != NULL &&
-		    property_reply[i]->type == XCB_ATOM_PIXMAP)
-			old[i] = xcb_get_property_value(property_reply[i]);
-		else
-			old[i] = NULL;
-	}
-
-	if (old[0] != NULL)
-		xcb_kill_client(c, *old[0]);
-	if (old[1] != NULL && (old[0] == NULL || *old[0] != *old[1]))
-		xcb_kill_client(c, *old[1]);
-
-	for (i = 0; i < 2; i++) {
-		if (atom_reply[i] != NULL)
-			xcb_change_property(c, XCB_PROP_MODE_REPLACE,
-			    screen->root, atom_reply[i]->atom, XCB_ATOM_PIXMAP,
-			    32, 1, &pixmap);
-		else
-			warnx("failed to update atoms");
-		free(property_reply[i]);
-		free(atom_reply[i]);
-	}
-}
-
-static uint32_t
-get_max_rows_per_request(xcb_connection_t *c, xcb_image_t *image, uint32_t n)
-{
-	uint32_t max_len, max_req_len, row_len, max_height;
-
-	max_req_len = xcb_get_maximum_request_length(c);
-	max_len = (max_req_len > n ? n : max_req_len) * 4;
-	if (max_len <= sizeof(xcb_put_image_request_t))
-		errx(1, "unable to put image on X server");
-	max_len -= sizeof(xcb_put_image_request_t);
-	row_len = (image->stride + image->scanline_pad - 1) &
-	    -image->scanline_pad;
-	max_height = max_len / row_len;
-	if (max_height < 1)
-		errx(1, "unable to put image on X server");
-	DBG("put image request parameters:\n"
-	    "maximum request length allowed for server (32 bits): %u\n"
-	    "maximum length for row data: %u\n"
-	    "length of rows in image: %u\n"
-	    "maximum height to send: %u\n",
-	    max_req_len, max_len, row_len, max_height);
-	return max_height;
-}
-
 static void
 put_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
     xcb_image_t *xcb_image, xcb_pixmap_t pixmap, xcb_gcontext_t gc)
@@ -352,6 +288,60 @@ process_output(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
 }
 
 static void
+update_atoms(xcb_connection_t *c, xcb_screen_t *screen, xcb_pixmap_t pixmap)
+{
+	int i;
+	xcb_intern_atom_cookie_t atom_cookie[2];
+	xcb_intern_atom_reply_t *atom_reply[2];
+	xcb_get_property_cookie_t property_cookie[2];
+	xcb_get_property_reply_t *property_reply[2];
+	xcb_pixmap_t *old[2];
+
+	atom_cookie[0] = xcb_intern_atom(c, 0,
+	    sizeof(ATOM_ESETROOT) - 1, ATOM_ESETROOT);
+	atom_cookie[1] = xcb_intern_atom(c, 0,
+	    sizeof(ATOM_XSETROOT) - 1, ATOM_XSETROOT);
+
+	for (i = 0; i < 2; i++)
+		atom_reply[i] = xcb_intern_atom_reply(c, atom_cookie[i], NULL);
+
+	for (i = 0; i < 2; i++)
+		if (atom_reply[i] != NULL)
+			property_cookie[i] = xcb_get_property(c, 0,
+			    screen->root, atom_reply[i]->atom, XCB_ATOM_PIXMAP,
+			    0, 1);
+
+	for (i = 0; i < 2; i++) {
+		if (atom_reply[i] != NULL)
+			property_reply[i] =
+			    xcb_get_property_reply(c, property_cookie[i], NULL);
+		else
+			property_reply[i] = NULL;
+		if (property_reply[i] != NULL &&
+		    property_reply[i]->type == XCB_ATOM_PIXMAP)
+			old[i] = xcb_get_property_value(property_reply[i]);
+		else
+			old[i] = NULL;
+	}
+
+	if (old[0] != NULL)
+		xcb_kill_client(c, *old[0]);
+	if (old[1] != NULL && (old[0] == NULL || *old[0] != *old[1]))
+		xcb_kill_client(c, *old[1]);
+
+	for (i = 0; i < 2; i++) {
+		if (atom_reply[i] != NULL)
+			xcb_change_property(c, XCB_PROP_MODE_REPLACE,
+			    screen->root, atom_reply[i]->atom, XCB_ATOM_PIXMAP,
+			    32, 1, &pixmap);
+		else
+			warnx("failed to update atoms");
+		free(property_reply[i]);
+		free(atom_reply[i]);
+	}
+}
+
+static void
 process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
     wp_option_t *options)
 {
@@ -421,6 +411,16 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 
 	if (outputs != &tile_output)
 		free_outputs(outputs);
+}
+
+static void
+usage(void)
+{
+	fprintf(stderr,
+"usage: xsetwallpaper [-screen <screen>] [--no-randr] [--output <output>]\n"
+"  [--center <file>] [--maximize <file>]  [--stretch <file>]\n"
+"  [--tile <file>] [--zoom <file>] [--version]\n");
+	exit(1);
 }
 
 int
