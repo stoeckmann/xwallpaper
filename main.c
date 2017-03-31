@@ -464,7 +464,6 @@ main(int argc, char *argv[])
 #endif /* HAVE_PLEDGE */
 
 	it = xcb_setup_roots_iterator(xcb_get_setup(c));
-#ifdef WITH_XPM
 	/*
 	 * Needs a screen for possible XPM color parsing.
 	 * Technically this means that it has to be repeated for
@@ -475,9 +474,6 @@ main(int argc, char *argv[])
 	if (it.rem == 0)
 		errx(1, "no screen found");
 	load_pixman_images(c, it.data, options);
-#else
-	load_pixman_images(NULL, NULL, options);
-#endif /* WITH_XPM */
 
 	for (snum = 0; it.rem; snum++, xcb_screen_next(&it))
 		process_screen(c, it.data, snum, options);
