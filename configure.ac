@@ -15,7 +15,6 @@ AM_INIT_AUTOMAKE([foreign])
 
 # Check for pkg-config packages
 PKG_CHECK_MODULES(PIXMAN, [pixman-1 >= 0.32])
-PKG_CHECK_MODULES(PNG, [libpng >= 1.2])
 PKG_CHECK_MODULES(XCB, [xcb-image >= 0.4 xcb-util >= 0.4])
 
 # Check for OpenBSD's pledge(2)
@@ -86,6 +85,30 @@ AS_IF([test "$jpeg_ok" = yes],
   [AC_DEFINE(WITH_JPEG,[],[Define to 1 if you want JPEG support.])],[]
 )
 AM_CONDITIONAL(BUILD_JPEG, [test "$jpeg_ok" = yes])
+
+# Check if PNG support is requested
+AC_MSG_CHECKING(whether PNG support is requested)
+AC_ARG_WITH([jpeg],
+  [AS_HELP_STRING([--without-png], [disable PNG support])],
+  [
+   if test "$withval" = no ; then
+     png_support=no
+   else
+     png_support=yes
+   fi
+  ],
+  [ png_support=auto ]
+)
+AC_MSG_RESULT($png_support)
+if test "$png_support" != no ; then
+  PKG_CHECK_MODULES(PNG, libpng >= 1.2, [png_ok="yes"], [png_ok="no"])
+else
+  png_ok="no"
+fi
+AS_IF([test "$png_ok" = yes],
+  [AC_DEFINE(WITH_PNG,[],[Define to 1 if you want PNG support.])],[]
+)
+AM_CONDITIONAL(BUILD_PNG, [test "$png_ok" = yes])
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

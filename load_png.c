@@ -59,8 +59,11 @@ load_png(FILE *fp)
 	if (png_ptr == NULL)
 		errx(1, "failed to initialize png struct");
 
-	if (setjmp(png_jmpbuf(png_ptr)))
-		errx(1, "failed to parse input file");
+	if (setjmp(png_jmpbuf(png_ptr))) {
+		DBG("failed to parse file as PNG\n");
+		png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
+		return NULL;
+	}
 
 	info_ptr = png_create_info_struct(png_ptr);
 	if (info_ptr == NULL)

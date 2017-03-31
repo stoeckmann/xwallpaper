@@ -59,13 +59,20 @@ load_pixman_image(FILE *fp)
 {
 	pixman_image_t *pixman_image;
 
-	pixman_image = load_png(fp);
+	pixman_image = NULL;
+
+#ifdef WITH_PNG
+	if (pixman_image == NULL) {
+		rewind(fp);
+		pixman_image = load_png(fp);
+	}
+#endif /* WITH_PNG */
 #ifdef WITH_JPEG
-	if (pixman_image == NULL)
+	if (pixman_image == NULL) {
+		rewind(fp);
 		pixman_image = load_jpeg(fp);
+	}
 #endif /* WITH_JPEG */
-	if (pixman_image == NULL)
-		errx(1, "failed to parse input file");
 
 	return pixman_image;
 }
@@ -78,7 +85,10 @@ load_pixman_images(wp_option_t *options)
 
 	for (option = options; option->filename != NULL; option++)
 		if (option->buffer->pixman_image == NULL) {
+			DBG("loading %s\n", option->filename);
 			img = load_pixman_image(option->buffer->fp);
+			if (img == NULL)
+				errx(1, "failed to parse %s", option->filename);
 			option->buffer->pixman_image = img;
 			fclose(option->buffer->fp);
 			if (pixman_image_get_width(img) > UINT16_MAX ||
@@ -208,7 +218,7 @@ put_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
 
 	max_height = get_max_rows_per_request(c, xcb_image, UINT32_MAX / 4);
 	if (max_height < xcb_image->height) {
-		DBG("image exceeds request size limitations");
+		DBG("image exceeds request size limitations\n");
 
 		/* adjust for better performance */
 		max_height = get_max_rows_per_request(c, xcb_image, 65536);

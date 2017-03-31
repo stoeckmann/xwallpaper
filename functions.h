@@ -23,6 +23,8 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include "config.h"
+
 #define MODE_CENTER	1
 #define MODE_MAXIMIZE	2
 #define MODE_STRETCH	3

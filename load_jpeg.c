@@ -17,6 +17,7 @@
 #include <err.h>
 #include <limits.h>
 #include <pixman.h>
+#include <setjmp.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,10 +26,19 @@
 
 #include "functions.h"
 
+typedef struct wp_err {
+	struct jpeg_error_mgr	mgr;
+	jmp_buf			env;
+} wp_err_t;
+
 void
 error_jpg(j_common_ptr common)
 {
-	errx(1, "failed to parse input file");
+	wp_err_t *wp_err;
+
+	wp_err = (wp_err_t *)common->err;
+
+	longjmp(wp_err->env, 1);
 }
 
 static void
@@ -103,7 +113,7 @@ scan_rgb(struct jpeg_decompress_struct *cinfo, JSAMPARRAY scanline,
 pixman_image_t *
 load_jpeg(FILE *fp)
 {
-	struct jpeg_error_mgr error_mgr;
+	wp_err_t wp_err;
 	pixman_image_t *img;
 	JSAMPARRAY scanline;
 	JDIMENSION width, height;
@@ -111,8 +121,17 @@ load_jpeg(FILE *fp)
 	uint32_t *pixels;
 	size_t len;
 
-	cinfo.err = jpeg_std_error(&error_mgr);
-	error_mgr.error_exit = error_jpg;
+	pixels = NULL;
+	cinfo.err = jpeg_std_error(&wp_err.mgr);
+	wp_err.mgr.error_exit = error_jpg;
+
+	if (setjmp(wp_err.env)) {
+		DBG("failed to parse input as JPEG\n");
+		jpeg_destroy_decompress(&cinfo);
+		free(pixels);
+		return NULL;
+	}
+
 	jpeg_create_decompress(&cinfo);
 	jpeg_stdio_src(&cinfo, fp);
 	jpeg_read_header(&cinfo, TRUE);
