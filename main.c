@@ -261,23 +261,19 @@ static void
 put_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
     xcb_image_t *xcb_image, xcb_pixmap_t pixmap, xcb_gcontext_t gc)
 {
-	uint32_t h, max_height;
+	uint8_t *data;
+	uint32_t h, max_height, sub_height;
+	xcb_image_t *sub;
 
-	max_height = get_max_rows_per_request(c, xcb_image, UINT32_MAX / 4);
 	DBG("xcb image (%dx%d) to %s (%dx%d+%d+%d)\n",
 	    xcb_image->width, xcb_image->height,
 	    output->name != NULL ? output->name : "screen", output->width,
 	    output->height, output->x, output->y);
-	if (max_height >= xcb_image->height) {
-		DBG("sending image at once\n");
-		xcb_put_image(c, xcb_image->format, pixmap, gc,
-		    xcb_image->width, xcb_image->height, output->x, output->y,
-		    0, screen->root_depth, xcb_image->size, xcb_image->data);
-	} else {
-		xcb_image_t *sub;
-		uint32_t max_height, sub_height;
 
-		DBG("sending image in chunks\n");
+	max_height = get_max_rows_per_request(c, xcb_image, UINT32_MAX / 4);
+	if (max_height < xcb_image->height) {
+		DBG("image exceeds request size limitations");
+
 		/* adjust for better performance */
 		max_height = get_max_rows_per_request(c, xcb_image, 65536);
 
@@ -286,38 +282,38 @@ put_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
 		    XCB_IMAGE_FORMAT_Z_PIXMAP, 32, NULL, ~0, NULL);
 		if (sub == NULL)
 			errx(1, "failed to create xcb image");
-		sub->data = xcb_image->data;
+	} else {
+		sub = xcb_image;
+		sub_height = xcb_image->height;
+	}
 
-		for (h = 0; h < xcb_image->height; h += max_height) {
-			if (xcb_image->height - h < max_height) {
-				uint8_t *data;
-
-				sub_height = xcb_image->height - h;
-				data = sub->data;
-				xcb_image_destroy(sub);
-				sub = xcb_image_create_native(c,
-				    xcb_image->width, sub_height,
-				    XCB_IMAGE_FORMAT_Z_PIXMAP, 32, NULL, ~0,
-				    NULL);
-				if (sub == NULL)
-					errx(1, "failed to create xcb image");
-				sub->data = data;
-			}
-			DBG("sub image (%dx%d+0+%d) to %s (%dx%d+%d+%d)\n",
-			    sub->width, sub->height, h,
-			    output->name != NULL ? output->name : "screen",
-			    sub->width, sub_height, output->x,
-			    output->y + h);
-			xcb_put_image(c, sub->format, pixmap, gc,
-			    sub->width, sub->height, output->x,
-			    output->y + h, 0, screen->root_depth,
-			    sub->size, sub->data);
-
-			sub->data += xcb_image->stride * sub_height;
+	data = xcb_image->data;
+	for (h = 0; h < xcb_image->height; h += sub_height) {
+		if (sub_height > xcb_image->height - h) {
+			sub_height = xcb_image->height - h;
+			xcb_image_destroy(sub);
+			sub = xcb_image_create_native(c,
+			    xcb_image->width, sub_height,
+			    XCB_IMAGE_FORMAT_Z_PIXMAP, 32, NULL, ~0, NULL);
+			if (sub == NULL)
+				errx(1, "failed to create xcb image");
 		}
 
-		xcb_image_destroy(sub);
+		DBG("put image (%dx%d+0+%d) to %s (%dx%d+%d+%d)\n",
+		    sub->width, sub->height, h,
+		    output->name != NULL ? output->name : "screen",
+		    sub->width, sub_height, output->x,
+		    output->y + h);
+		xcb_put_image(c, sub->format, pixmap, gc,
+		    sub->width, sub->height, output->x,
+		    output->y + h, 0, screen->root_depth,
+		    sub->size, data);
+
+		data += xcb_image->stride * sub_height;
 	}
+
+	if (sub != xcb_image)
+		xcb_image_destroy(sub);
 }
 
 static void
