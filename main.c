@@ -451,7 +451,8 @@ main(int argc, char *argv[])
 	xcb_screen_iterator_t it;
 	int snum;
 #ifdef HAVE_PLEDGE
-	pledge("dns inet rpath stdio unix", NULL);
+	if (pledge("dns inet rpath stdio unix", NULL) == -1)
+		err(1, "pledge");
 #endif /* HAVE_PLEDGE */
 	if (argc < 2 || (options = parse_options(++argv)) == NULL)
 		usage();
@@ -460,7 +461,8 @@ main(int argc, char *argv[])
 	if (xcb_connection_has_error(c))
 		errx(1, "failed to connect to X server");
 #ifdef HAVE_PLEDGE
-	pledge("stdio", NULL);
+	if (pledge("stdio", NULL) == -1)
+		err(1, "pledge");
 #endif /* HAVE_PLEDGE */
 
 	it = xcb_setup_roots_iterator(xcb_get_setup(c));
