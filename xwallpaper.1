@@ -11,85 +11,104 @@
 .\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-.TH XWALLPAPER 1 "xwallpaper 0.2.0" "XWALLPAPER"
-.SH NAME
-xwallpaper \- wallpaper setting utility for X
-.SH SYNOPSIS
-.B xwallpaper [--screen <screen>] [--no-randr] [--output <output>] [--center <file>] [--maximize <file>] [--stretch <file>] [--tile <file>] [--zoom <file>] [--version]
-.SH DESCRIPTION
+.Dd April 2, 2017
+.Dt XWALLPAPER 1
+.Os xwallpaper 0.2.0
+.Sh NAME
+.Nm xwallpaper
+.Nd wallpaper setting utility for X
+.Sh SYNOPSIS
+.Nm xwallpaper
+.Op Fl Fl screen Ar screen
+.Op Fl Fl no-randr
+.Op Fl Fl output Ar output
+.Op Fl Fl center Ar file
+.Op Fl Fl maximize Ar file
+.Op Fl Fl stretch Ar file
+.Op Fl Fl tile Ar file
+.Op Fl Fl zoom Ar file
+.Op Fl Fl version
+.Sh DESCRIPTION
 The
-.I xwallpaper
-program allows you to set image files as your X wallpaper. PNG file format
-is supported by default and preferred, but optional JPEG support exists as well.
-.PP
+.Nm xwallpaper
+program allows you to set image files as your X wallpaper.
+PNG file format is supported by default and preferred,
+but optional JPEG support exists as well.
+.Pp
 The wallpaper is also advertised to programs which support semi-transparent
 backgrounds.
-.SH OPTIONS
-.PP
+.Sh OPTIONS
 The various options are as follows:
-.IP "\fB--center \fP \fIfile\fP
-Centers the input file on the screen. If the dimensions of the input file are
-smaller than the screen dimensions, the remaining area is filled black. If the
-input file dimensions are too large, parts of the image will be cropped.
-.IP "\fB--maximize \fP \fIfile\fP
-Maximizes input file to fit screen without cropping. This could mean zooming in
-or out, depending on the dimensions of the input file and the screen. This
-option guarantees that the whole image is seen. If the ratio does not fit the
-screen, the remaining area is filled black. The image itself will be centered
-on screen.
-.IP "\fB--no-randr\fP
-Ignores individual outputs and uses the whole screen instead. This is the area
-that spans across all different outputs (monitors).
-.IP "\fB--output \fP \fIoutput\fP
+.Bl -tag -width Ds
+.It Fl Fl center Ar file
+Centers the input file on the screen.
+If the dimensions of the input file are smaller than the screen dimensions,
+the remaining area is filled black.
+If the input file dimensions are too large, parts of the image will be cropped.
+.It Fl Fl maximize Ar file
+Maximizes input file to fit screen without cropping.
+This could mean zooming in or out,
+depending on the dimensions of the input file and the screen.
+This option guarantees that the whole image is seen.
+If the ratio does not fit the screen, the remaining area is filled black.
+The image itself will be centered on screen.
+.It Fl Fl no-randr
+Ignores individual outputs and uses the whole screen instead.
+This is the area that spans across all different outputs (monitors).
+.It Fl Fl output Ar output
 Specifies the output on which a subsequently supplied file shall be set as
-wallpaper. You can retrieve a list of outputs on your system by executing
-\fIxrandr(1)\fP. If no output is specified, all outputs will be modified
-individually.
-The special keyword \fIall\fP will repeat subsequent actions on all displays.
-.IP "\fB--screen \fP \fIscreen\fP
-Specifies a screen by its screen number. Normally all screens of an X display
-are processed. Please note that a screen is not a single monitor. See
-\fI\-\-output\fP for such a use case above. If the screen could not be found,
-nothing happens.
-.IP "\fB--stretch \fP \fIfile\fP
-Stretches input file to fully cover the screen. If the aspect ratio of the
-input file does not match the screen, then the ratio of the input file is
-adjusted.
-.IP "\fB--tile \fP \fIfile\fP
-Uses tiling mode. Draws the input file at the upper left corner of the screen
+wallpaper.
+You can retrieve a list of outputs on your system by executing
+.Xr xrandr 1 .
+If no output is specified, all outputs will be modified individually.
+The special keyword
+.Cm all
+will repeat subsequent actions on all displays.
+.It Fl Fl screen Ar screen
+Specifies a screen by its screen number.
+Normally all screens of an X display are processed.
+Please note that a screen is not a single monitor.
+See
+.Fl Fl output
+for such a use case above.
+If the screen could not be found, nothing happens.
+.It Fl Fl stretch Ar file
+Stretches input file to fully cover the screen.
+If the aspect ratio of the input file does not match the screen,
+then the ratio of the input file is adjusted.
+.It Fl Fl tile Ar file
+Uses tiling mode.
+Draws the input file at the upper left corner of the screen
 and repeats the image until the remaining area of the screen is covered.
-.IP "\fB--version\fP
+.It Fl Fl version
 Prints version and exits.
-.IP "\fB--zoom \fP \fIfile\fP
-Zooms input file to fit screen with cropping. This could mean zooming in or out,
-depending on the dimensions of the input file and the screen. If the ratio
-does not fit the screen, parts of the input file will not be shown. The image
-itself will be centered on screen. Default behaviour if no option was selected.
-.PP
+.It Fl Fl zoom Ar file
+Zooms input file to fit screen with cropping.
+This could mean zooming in or out,
+depending on the dimensions of the input file and the screen.
+If the ratio does not fit the screen,
+parts of the input file will not be shown.
+The image itself will be centered on screen.
+Default behaviour if no option was selected.
+.El
+.Pp
 If multiple contradicting options were given, the last supplied option wins.
 It is also possible to repeat output arguments without any subsequent files.
-In that case, the last mode and file will be re-used.
-.SH EXAMPLES
+In that case, the last mode and file will be reused.
+.Sh EXAMPLES
 Centers a PNG file as a wallpaper on LVDS-1:
-.RS
-xwallpaper --output LVDS-1 --center file.png
-.RE
-.PP
+.Dl $ xwallpaper --output LVDS-1 --center file.png
+.Pp
 Tiles a PNG file as a wallpaper across all outputs:
-.RS
-xwallpaper --no-randr --tile file.png
-.RE
-.PP
+.Dl $ xwallpaper --no-randr --tile file.png
+.Pp
 Zooms into a JPEG file as a wallpaper on each output individually:
-.RS
-xwallpaper --zoom file.jpg
-.RE
-.PP
+.Dl $ xwallpaper --zoom file.jpg
+.Pp
 Tiles a JPEG file as a wallpaper on VGA-1 and zooms into a PNG file on LVDS-1:
-.RS
-xwallpaper --output VGA-1 --tile file.jpg --output LVDS-1 --zoom file.png
-.RE
-.SH BUGS
-Use the GitHub issue tracker: https://github.com/stoeckmann/xwallpaper/issues
-.SH AUTHOR
-Tobias Stoeckmann <tobias@stoeckmann.org>
+.Dl $ xwallpaper --output VGA-1 --tile file.jpg --output LVDS-1 --zoom file.png
+.Sh BUGS
+Use the GitHub issue tracker:
+.Lk https://github.com/stoeckmann/xwallpaper/issues
+.Sh AUTHOR
+.An Tobias Stockmann Aq Mt tobias@stoeckmann.org
