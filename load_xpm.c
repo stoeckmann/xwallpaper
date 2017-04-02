@@ -75,6 +75,8 @@ load_xpm(xcb_connection_t *c, xcb_screen_t *screen, FILE *fp)
 			s = color->g4_color;
 		else if (color->m_color != NULL)
 			s = color->m_color;
+		else
+			s = NULL;
 
 		if (s == NULL || strcmp(s, "None") == 0)
 			s = "#000000";
