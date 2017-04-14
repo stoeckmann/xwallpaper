@@ -134,5 +134,10 @@ AS_IF([test "$xpm_ok" = yes],
 )
 AM_CONDITIONAL(BUILD_XPM, [test "$xpm_ok" = yes])
 
+AC_ARG_WITH([zshcompletiondir],
+ AS_HELP_STRING([--with-zshcompletiondir=DIR], [Zsh completions directory]),
+ [], [with_zshcompletiondir=${datadir}/zsh/vendor-completions])
+AC_SUBST([zshcompletiondir], [$with_zshcompletiondir])
+
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

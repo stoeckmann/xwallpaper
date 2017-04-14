@@ -1,8 +1,12 @@
+zshcompletiondir=@zshcompletiondir@
+
 dist_man_MANS = xwallpaper.1
 
 bin_PROGRAMS = xwallpaper
 
-EXTRA_DIST = LICENSE README.md
+dist_zshcompletion_DATA = _xwallpaper
+
+EXTRA_DIST = LICENSE README.md _xwallpaper
 
 xwallpaper_SOURCES = functions.h main.c options.c outputs.c util.c
 xwallpaper_CPPFLAGS = @PIXMAN_CFLAGS@ @XCB_CFLAGS@
