@@ -15,7 +15,7 @@ AM_INIT_AUTOMAKE([foreign])
 
 # Check for pkg-config packages
 PKG_CHECK_MODULES(PIXMAN, [pixman-1 >= 0.32])
-PKG_CHECK_MODULES(XCB, [xcb-image >= 0.4 xcb-util >= 0.4])
+PKG_CHECK_MODULES(XCB, [xcb-image >= 0.3.8 xcb-util >= 0.3.8])
 
 # Check for OpenBSD's pledge(2)
 AC_CHECK_FUNCS([pledge])
