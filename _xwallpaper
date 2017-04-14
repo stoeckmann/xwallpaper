@@ -1,0 +1,19 @@
+#compdef xwallpaper
+
+local curcontext="$curcontext" state line expl
+typeset -A opt_args
+
+_arguments \
+    '--screen[X screen number]:X screen number' \
+    '--no-randr[disable randr support]' \
+    '--output[output device]:output device:->outputs' \
+    '--center[center input file on the screen]:filename:_files' \
+    '--maximize[maximize input file on the screen without cropping]:filename:_files' \
+    '--stretch[stretch input file to fill entire screen]:filename:_files' \
+    '--zoom[maximize input file on the screen with cropping]:filename:_files' \
+    '--tile[repeat image to fill screen]:filename:_files' \
+    '--version[show version information]'
+
+case $state in
+	(outputs) _wanted outputs expl output compadd ${(uo)${(M)${(f)"$(_call_program outputs xrandr)"}:#* connected*}%% *} && return 0 ;;
+esac
