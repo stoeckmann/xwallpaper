@@ -12,6 +12,14 @@ xwallpaper_SOURCES = functions.h main.c options.c outputs.c util.c
 xwallpaper_CPPFLAGS = @PIXMAN_CFLAGS@ @XCB_CFLAGS@
 xwallpaper_LDADD = @PIXMAN_LIBS@ @XCB_LIBS@
 
+if BUILD_SECCOMP
+xwallpaper_SOURCES += seccomp.c
+xwallpaper_CPPFLAGS += @SECCOMP_CFLAGS@
+xwallpaper_LDADD += @SECCOMP_LIBS@
+else
+EXTRA_DIST += seccomp.c
+endif
+
 if BUILD_RANDR
 xwallpaper_CPPFLAGS += @RANDR_CFLAGS@
 xwallpaper_LDADD += @RANDR_LIBS@

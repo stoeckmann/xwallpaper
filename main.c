@@ -454,6 +454,9 @@ main(int argc, char *argv[])
 	if (pledge("dns inet rpath stdio unix", NULL) == -1)
 		err(1, "pledge");
 #endif /* HAVE_PLEDGE */
+#ifdef WITH_SECCOMP
+	stage1_sandbox();
+#endif /* WITH_SECCOMP */
 	if (argc < 2 || (options = parse_options(++argv)) == NULL)
 		usage();
 
@@ -464,6 +467,9 @@ main(int argc, char *argv[])
 	if (pledge("stdio", NULL) == -1)
 		err(1, "pledge");
 #endif /* HAVE_PLEDGE */
+#ifdef WITH_SECCOMP
+	stage2_sandbox();
+#endif /* WITH_SECCOMP */
 
 	it = xcb_setup_roots_iterator(xcb_get_setup(c));
 	/*

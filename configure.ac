@@ -17,9 +17,6 @@ AM_INIT_AUTOMAKE([foreign])
 PKG_CHECK_MODULES(PIXMAN, [pixman-1 >= 0.32])
 PKG_CHECK_MODULES(XCB, [xcb-image >= 0.3.8 xcb-util >= 0.3.8])
 
-# Check for OpenBSD's pledge(2)
-AC_CHECK_FUNCS([pledge])
-
 # Check if debug messages are requested
 AC_MSG_CHECKING(whether debug messages are requested)
 AC_ARG_WITH([debug],
@@ -37,6 +34,33 @@ AC_MSG_RESULT($debug_messages)
 AS_IF([test "$debug_messages" = yes],
   [AC_DEFINE(DEBUG,[],[Define to 1 if you want debug messages.])],[]
 )
+
+# Check for OpenBSD's pledge(2)
+AC_CHECK_FUNCS([pledge])
+
+# Check for seccomp
+AC_MSG_CHECKING(whether seccomp support is requested)
+AC_ARG_WITH([seccomp],
+  [AS_HELP_STRING([--without-seccomp], [disable seccomp support])],
+  [
+    if test "$withval" = no ; then
+      seccomp_support=no
+    else
+      seccomp_support=yes
+    fi
+  ],
+  [ seccomp_support=auto ]
+)
+AC_MSG_RESULT($seccomp_support)
+if test "$seccomp_support" != no ; then
+  PKG_CHECK_MODULES(SECCOMP, libseccomp >= 2.3.1, [seccomp_ok="yes"], [seccomp_ok="no"])
+else
+  seccomp_ok="no"
+fi
+AS_IF([test "$seccomp_ok" = yes],
+  [AC_DEFINE(WITH_SECCOMP,[],[Define to 1 if you want seccomp support.])],[]
+)
+AM_CONDITIONAL(BUILD_SECCOMP, [test "$seccomp_ok" = yes])
 
 # Check if RandR support is requested
 AC_MSG_CHECKING(whether RandR support is requested)
