@@ -470,7 +470,7 @@ main(int argc, char *argv[])
 	 * Needs a screen for possible XPM color parsing.
 	 * Technically this means that it has to be repeated for
 	 * every screen, but it's unlikely to even encounter a setup
-	 * which as multiple ones. Also the exact colors are parsed
+	 * which has multiple ones. Also the exact colors are parsed
 	 * on purpose, so I don't expect a difference.
 	 */
 	if (it.rem == 0)
