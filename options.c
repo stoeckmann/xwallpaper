@@ -131,11 +131,11 @@ static int
 parse_screen(char *screen)
 {
 	char *endptr;
-	long int value;
+	long value;
 
 	value = strtol(screen, &endptr, 10);
 	if (endptr == screen || *endptr != '\0' || value < 0 || value > INT_MAX)
-		errx(1, "failed to parse screen number: %s", optarg);
+		errx(1, "failed to parse screen number: %s", screen);
 	return value;
 }
 
