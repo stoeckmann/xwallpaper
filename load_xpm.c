@@ -45,7 +45,7 @@ load_xpm(xcb_connection_t *c, xcb_screen_t *screen, FILE *fp)
 	unsigned int *d, i, width, height;
 
 	if ((fd = fileno(fp)) == -1 || fstat(fd, &st) ||
-	    st.st_size < 0 || st.st_size > (uintmax_t)SIZE_MAX) {
+	    st.st_size < 0 || (uintmax_t)st.st_size > (uintmax_t)SIZE_MAX) {
 		DBG("failed to handle size of XPM file\n");
 		return NULL;
 	}
