@@ -20,6 +20,7 @@
 .Sh SYNOPSIS
 .Nm xwallpaper
 .Op Fl Fl screen Ar screen
+.Op Fl Fl daemon
 .Op Fl Fl no-randr
 .Op Fl Fl output Ar output
 .Op Fl Fl center Ar file
@@ -45,6 +46,12 @@ Centers the input file on the screen.
 If the dimensions of the input file are smaller than the screen dimensions,
 the remaining area is filled black.
 If the input file dimensions are too large, parts of the image will be cropped.
+.It Fl Fl daemon
+Keeps
+.Nm xwallpaper
+running in background, listening for RandR events. In this mode, the
+wallpapers are redrawn when output sizes change. This option can only be used
+when RandR support is available and activated.
 .It Fl Fl maximize Ar file
 Maximizes input file to fit screen without cropping.
 This could mean zooming in or out,
@@ -104,6 +111,9 @@ Tiles a PNG file as a wallpaper across all outputs:
 .Pp
 Zooms into a JPEG file as a wallpaper on each output individually:
 .Dl $ xwallpaper --zoom file.jpg
+.Pp
+Centers and recenters a JPEG file after output updates on all outputs:
+.Dl $ xwallpaper --daemon --center file.jpg
 .Pp
 Tiles a JPEG file as a wallpaper on VGA-1 and zooms into a PNG file on LVDS-1:
 .Dl $ xwallpaper --output VGA-1 --tile file.jpg --output LVDS-1 --zoom file.png

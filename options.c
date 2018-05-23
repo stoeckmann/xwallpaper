@@ -50,64 +50,64 @@ add_buffer(wp_buffer_t **bufs, size_t *count, wp_buffer_t buf)
 	return i;
 }
 
-static wp_option_t *
-add_option(wp_option_t *options, size_t *count, wp_option_t option)
+static void
+add_option(wp_config_t *config, wp_option_t option)
 {
 	size_t i;
 	wp_option_t *o;
 
 	if (option.filename == NULL)
-		return options;
+		return;
 
-	for (i = 0; i < *count; i++)
-		if (options[i].output != NULL &&
-		    strcmp(options[i].output, option.output) == 0 &&
-		    options[i].screen == option.screen)
+	for (i = 0; i < config->count; i++)
+		if (config->options[i].output != NULL &&
+		    strcmp(config->options[i].output, option.output) == 0 &&
+		    config->options[i].screen == option.screen)
 			break;
 
-	if (options != NULL && i != *count)
-		o = options + i;
+	if (i != config->count)
+		o = config->options + i;
 	else {
-		options = realloc(options, (*count + 2) * sizeof(*options));
-		if (options == NULL)
+		config->options = realloc(config->options,
+		    (config->count + 2) * sizeof(*config->options));
+		if (config->options == NULL)
 			err(1, "failed to allocate memory");
-		o = &options[(*count)++];
-		options[*count].filename = NULL;
+		o = &config->options[config->count++];
+		config->options[config->count].filename = NULL;
 	}
 	memcpy(o, &option, sizeof(*o));
-
-	return options;
 }
 
 static void
-init_buffers(wp_option_t *options, size_t options_count)
+init_buffers(wp_config_t *config)
 {
 	wp_buffer_t *buffers, buffer;
 	size_t buffers_count, i, len;
 	size_t *refs;
 
-	SAFE_MUL(len, options_count, sizeof(*refs));
+	SAFE_MUL(len, config->count, sizeof(*refs));
 	refs = xmalloc(len);
 
 	buffers = NULL;
 	buffers_count = 0;
 	memset(&buffer, 0, sizeof(buffer));
 
-	for (i = 0; i < options_count; i++) {
+	for (i = 0; i < config->count; i++) {
 		struct stat st;
 
-		if ((buffer.fp = fopen(options[i].filename, "r")) == NULL)
-			err(1, "failed to open %s", options[i].filename);
+		if ((buffer.fp = fopen(config->options[i].filename, "r"))
+		    == NULL)
+			err(1, "open '%s' failed", config->options[i].filename);
 		if (fstat(fileno(buffer.fp), &st))
-			err(1, "failed to stat %s", options[i].filename);
+			err(1, "stat '%s' failed", config->options[i].filename);
 		buffer.st_dev = st.st_dev;
 		buffer.st_ino = st.st_ino;
 
 		refs[i] = add_buffer(&buffers, &buffers_count, buffer);
 	}
 
-	for (i = 0; i < options_count; i++)
-		options[i].buffer = &buffers[refs[i]];
+	for (i = 0; i < config->count; i++)
+		config->options[i].buffer = &buffers[refs[i]];
 	free(refs);
 }
 
@@ -139,20 +139,28 @@ parse_screen(char *screen)
 	return value;
 }
 
-wp_option_t *
-parse_options(char **argv)
+wp_config_t *
+parse_config(char **argv)
 {
-	wp_option_t *options, last;
-	size_t count;
+	wp_config_t *config;
+	wp_option_t last;
 
-	options = NULL;
-	count = 0;
+	config = xmalloc(sizeof(*config));
+	config->options = NULL;
+	config->count = 0;
+	config->daemon = 0;
 
 	memset(&last, 0, sizeof(last));
 	last.screen = -1;
 
 	while (*argv != NULL) {
-		if (strcmp(argv[0], "--screen") == 0) {
+		if (strcmp(argv[0], "--daemon") == 0) {
+			if (has_randr == 0) {
+				warnx("--daemon requires RandR");
+				return NULL;
+			}
+			config->daemon = 1;
+		} else if (strcmp(argv[0], "--screen") == 0) {
 			if (*++argv == NULL) {
 				warnx("missing argument for --screen");
 				return NULL;
@@ -164,10 +172,10 @@ parse_options(char **argv)
 				return NULL;
 			}
 			if (has_randr == 0) {
-				warnx("--no-randr conflicts with --output");
+				warnx("--output requires RandR");
 				return NULL;
 			}
-			options = add_option(options, &count, last);
+			add_option(config, last);
 			last.output = *argv;
 		} else if ((last.mode = parse_mode(*argv)) != -1) {
 			if (*++argv == NULL) {
@@ -176,8 +184,12 @@ parse_options(char **argv)
 			}
 			last.filename = *argv;
 		} else if (strcmp(argv[0], "--no-randr") == 0) {
-			if (count > 0) {
+			if (config->count > 0) {
 				warnx("--no-randr conflicts with --output");
+				return NULL;
+			}
+			if (config->daemon) {
+				warnx("--daemon requires RandR");
 				return NULL;
 			}
 			has_randr = 0;
@@ -192,12 +204,12 @@ parse_options(char **argv)
 	}
 	if (has_randr == -1 && last.output == NULL)
 		last.output = "all";
-	options = add_option(options, &count, last);
+	add_option(config, last);
 
-	if (count == 0)
+	if (config->count == 0)
 		return NULL;
 
-	init_buffers(options, count);
+	init_buffers(config);
 
-	return options;
+	return config;
 }

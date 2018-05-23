@@ -66,6 +66,12 @@ typedef struct wp_option {
 	int		 screen;
 } wp_option_t;
 
+typedef struct wp_config {
+	wp_option_t	*options;
+	size_t		 count;
+	int		 daemon;
+} wp_config_t;
+
 typedef struct wp_output {
 	char *name;
 	int16_t x, y;
@@ -80,7 +86,7 @@ wp_output_t	*get_outputs(xcb_connection_t *, xcb_screen_t *);
 pixman_image_t	*load_jpeg(FILE *);
 pixman_image_t	*load_png(FILE *);
 pixman_image_t	*load_xpm(xcb_connection_t *, xcb_screen_t *, FILE *);
-wp_option_t	*parse_options(char **);
+wp_config_t	*parse_config(char **);
 void		 stage1_sandbox(void);
 void		 stage2_sandbox(void);
 void		*xmalloc(size_t);

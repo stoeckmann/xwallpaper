@@ -14,6 +14,11 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include "config.h"
+
+#ifdef WITH_RANDR
+  #include <xcb/randr.h>
+#endif /* WITH_RANDR */
 #include <xcb/xcb.h>
 #include <xcb/xcb_image.h>
 
@@ -24,7 +29,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "config.h"
 #include "functions.h"
 
 #define ATOM_ESETROOT "ESETROOT_PMAP_ID"
@@ -310,6 +314,7 @@ process_output(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
 static void
 update_atoms(xcb_connection_t *c, xcb_screen_t *screen, xcb_pixmap_t pixmap)
 {
+	static int first_run = 1;
 	int i;
 	xcb_intern_atom_cookie_t atom_cookie[2];
 	xcb_intern_atom_reply_t *atom_reply[2];
@@ -344,10 +349,13 @@ update_atoms(xcb_connection_t *c, xcb_screen_t *screen, xcb_pixmap_t pixmap)
 			old[i] = NULL;
 	}
 
-	if (old[0] != NULL)
-		xcb_kill_client(c, *old[0]);
-	if (old[1] != NULL && (old[0] == NULL || *old[0] != *old[1]))
-		xcb_kill_client(c, *old[1]);
+	if (first_run) {
+		if (old[0] != NULL)
+			xcb_kill_client(c, *old[0]);
+		if (old[1] != NULL && (old[0] == NULL || *old[0] != *old[1]))
+			xcb_kill_client(c, *old[1]);
+		first_run = 0;
+	}
 
 	for (i = 0; i < 2; i++) {
 		if (atom_reply[i] != NULL)
@@ -443,11 +451,42 @@ usage(void)
 	exit(1);
 }
 
+#ifdef WITH_RANDR
+static void
+process_event(wp_config_t *config, xcb_connection_t *c,
+    xcb_generic_event_t *event) {
+	xcb_randr_screen_change_notify_event_t *randr_event;
+	xcb_screen_iterator_t it;
+	int snum;
+
+	randr_event = (xcb_randr_screen_change_notify_event_t *)event;
+	DBG("event received: response_type=%u, sequence=%u\n",
+	    randr_event->response_type, randr_event->sequence);
+	it = xcb_setup_roots_iterator(xcb_get_setup(c));
+	for (snum = 0; it.rem; snum++, xcb_screen_next(&it)) {
+		if (it.data->root == randr_event->root) {
+			/* only redraw if really necessary */
+			if (it.data->width_in_pixels == randr_event->width &&
+			    it.data->height_in_pixels == randr_event->height)
+				break;
+			it.data->width_in_pixels = randr_event->width;
+			it.data->height_in_pixels = randr_event->height;
+			process_screen(c, it.data, snum, config->options);
+		}
+	}
+	xcb_request_check(c, xcb_set_close_down_mode(c,
+	    XCB_CLOSE_DOWN_RETAIN_PERMANENT));
+	if (xcb_connection_has_error(c))
+		warnx("error encountered while setting wallpaper");
+}
+#endif /* WITH_RANDR */
+
 int
 main(int argc, char *argv[])
 {
-	wp_option_t *options;
+	wp_config_t *config;
 	xcb_connection_t *c;
+	xcb_generic_event_t *event;
 	xcb_screen_iterator_t it;
 	int snum;
 #ifdef HAVE_PLEDGE
@@ -457,7 +496,7 @@ main(int argc, char *argv[])
 #ifdef WITH_SECCOMP
 	stage1_sandbox();
 #endif /* WITH_SECCOMP */
-	if (argc < 2 || (options = parse_options(++argv)) == NULL)
+	if (argc < 2 || (config = parse_config(++argv)) == NULL)
 		usage();
 
 	c = xcb_connect(NULL, NULL);
@@ -481,15 +520,29 @@ main(int argc, char *argv[])
 	 */
 	if (it.rem == 0)
 		errx(1, "no screen found");
-	load_pixman_images(c, it.data, options);
+	load_pixman_images(c, it.data, config->options);
 
 	for (snum = 0; it.rem; snum++, xcb_screen_next(&it))
-		process_screen(c, it.data, snum, options);
+		process_screen(c, it.data, snum, config->options);
 
 	xcb_request_check(c,
 	    xcb_set_close_down_mode(c, XCB_CLOSE_DOWN_RETAIN_PERMANENT));
 	if (xcb_connection_has_error(c))
 		warnx("error encountered while setting wallpaper");
+
+#ifdef WITH_RANDR
+	if (config->daemon) {
+		it = xcb_setup_roots_iterator(xcb_get_setup(c));
+		for (snum = 0; it.rem; snum++, xcb_screen_next(&it))
+			xcb_request_check(c, xcb_randr_select_input(c, it.data->root,
+			    XCB_RANDR_NOTIFY_MASK_SCREEN_CHANGE));
+#ifndef DEBUG
+		daemon(0, 0);
+#endif /* DEBUG */
+		while ((event = xcb_wait_for_event(c)) != NULL)
+			process_event(config, c, event);
+	}
+#endif /* WITH_RANDR */
 
 	xcb_disconnect(c);
 
