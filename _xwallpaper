@@ -4,6 +4,7 @@ local curcontext="$curcontext" state line expl
 typeset -A opt_args
 
 _arguments \
+    '--daemon[enable daemon mode]' \
     '--no-randr[disable randr support]' \
     '*--screen[X screen number]:X screen number' \
     '*--output[output device]:output device:->outputs' \
