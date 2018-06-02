@@ -4,7 +4,7 @@
 pkg-config --version > /dev/null 2>&1
 if [ $? -ne 0 ]
 then
-	echo "Required package "pkg-config" not found."
+	echo "Required package \"pkg-config\" not found."
 	exit 1
 fi
 
