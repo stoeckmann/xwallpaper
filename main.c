@@ -500,7 +500,7 @@ main(int argc, char *argv[])
 		usage();
 
 	if (config->daemon && daemon(0, 0) < 0)
-	    warnx("failed to daemonize");
+		warnx("failed to daemonize");
 
 	c = xcb_connect(NULL, NULL);
 	if (xcb_connection_has_error(c))
