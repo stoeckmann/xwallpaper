@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([xwallpaper], [0.4.0], [tobias@stoeckmann.org])
+AC_INIT([xwallpaper], [0.4.1], [tobias@stoeckmann.org])
 AC_CONFIG_SRCDIR([Makefile.am])
 AC_CONFIG_HEADERS([config.h])
 
