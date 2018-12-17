@@ -490,7 +490,7 @@ main(int argc, char *argv[])
 	xcb_screen_iterator_t it;
 	int snum;
 #ifdef HAVE_PLEDGE
-	if (pledge("dns inet rpath stdio unix", NULL) == -1)
+	if (pledge("dns inet proc rpath stdio unix", NULL) == -1)
 		err(1, "pledge");
 #endif /* HAVE_PLEDGE */
 #ifdef WITH_SECCOMP
@@ -498,6 +498,9 @@ main(int argc, char *argv[])
 #endif /* WITH_SECCOMP */
 	if (argc < 2 || (config = parse_config(++argv)) == NULL)
 		usage();
+
+	if (config->daemon && daemon(0, 0) < 0)
+	    warnx("failed to daemonize");
 
 	c = xcb_connect(NULL, NULL);
 	if (xcb_connection_has_error(c))
@@ -536,9 +539,6 @@ main(int argc, char *argv[])
 		for (snum = 0; it.rem; snum++, xcb_screen_next(&it))
 			xcb_request_check(c, xcb_randr_select_input(c, it.data->root,
 			    XCB_RANDR_NOTIFY_MASK_SCREEN_CHANGE));
-
-		if (daemon(0, 0) < 0)
-		    warnx("failed to daemonize");
 
 		while ((event = xcb_wait_for_event(c)) != NULL)
 			process_event(config, c, event);

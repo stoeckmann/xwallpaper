@@ -146,6 +146,10 @@ stage1_sandbox(void)
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(chown), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(fchown), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(fchownat), 0) ||
+	    /* pledge: proc */
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(clone), 0) ||
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(setsid), 0) ||
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(set_robust_list), 0) ||
 	    /* seccomp for stage 2 */
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(seccomp), 0) ||
 	    add_stage2_rules(ctx) ||
