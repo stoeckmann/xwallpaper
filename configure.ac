@@ -17,24 +17,6 @@ AM_INIT_AUTOMAKE([foreign])
 PKG_CHECK_MODULES(PIXMAN, [pixman-1 >= 0.32])
 PKG_CHECK_MODULES(XCB, [xcb-image >= 0.3.8 xcb-util >= 0.3.8])
 
-# Check if debug messages are requested
-AC_MSG_CHECKING(whether debug messages are requested)
-AC_ARG_WITH([debug],
-  [AS_HELP_STRING([--with-debug], [enable debug messages])],
-  [
-   if test "$withval" = no ; then
-     debug_messages=no
-   else
-     debug_messages=yes
-   fi
-  ],
-  [ debug_messages=no ]
-)
-AC_MSG_RESULT($debug_messages)
-AS_IF([test "$debug_messages" = yes],
-  [AC_DEFINE(DEBUG,[],[Define to 1 if you want debug messages.])],[]
-)
-
 # Check for OpenBSD's pledge(2)
 AC_CHECK_FUNCS([pledge])
 

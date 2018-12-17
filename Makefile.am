@@ -8,7 +8,7 @@ dist_zshcompletion_DATA = _xwallpaper
 
 EXTRA_DIST = LICENSE README.md _xwallpaper
 
-xwallpaper_SOURCES = functions.h main.c options.c outputs.c util.c
+xwallpaper_SOURCES = functions.h debug.c main.c options.c outputs.c util.c
 xwallpaper_CPPFLAGS = @PIXMAN_CFLAGS@ @XCB_CFLAGS@
 xwallpaper_LDADD = @PIXMAN_LIBS@ @XCB_LIBS@
 

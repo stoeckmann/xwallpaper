@@ -79,7 +79,9 @@ typedef struct wp_output {
 } wp_output_t;
 
 extern int	 has_randr;
+extern int	 show_debug;
 
+void		 debug(const char *, ...);
 void		 free_outputs(wp_output_t *);
 wp_output_t	*get_output(wp_output_t *, char *);
 wp_output_t	*get_outputs(xcb_connection_t *, xcb_screen_t *);

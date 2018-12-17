@@ -49,7 +49,7 @@ get_max_rows_per_request(xcb_connection_t *c, xcb_image_t *image, uint32_t n)
 	max_height = max_len / row_len;
 	if (max_height < 1)
 		errx(1, "unable to put image on X server");
-	DBG("put image request parameters:\n"
+	debug("put image request parameters:\n"
 	    "maximum request length allowed for server (32 bits): %u\n"
 	    "maximum length for row data: %u\n"
 	    "length of rows in image: %u\n"
@@ -96,7 +96,7 @@ load_pixman_images(xcb_connection_t *c, xcb_screen_t *screen,
 
 	for (option = options; option->filename != NULL; option++)
 		if (option->buffer->pixman_image == NULL) {
-			DBG("loading %s\n", option->filename);
+			debug("loading %s\n", option->filename);
 			img = load_pixman_image(c, screen, option->buffer->fp);
 			if (img == NULL)
 				errx(1, "failed to parse %s", option->filename);
@@ -145,7 +145,7 @@ tile(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 			else
 				w = pixman_width;
 
-			DBG("tiling %s for %s (area %dx%d+%d+%d)\n",
+			debug("tiling %s for %s (area %dx%d+%d+%d)\n",
 			    option->filename, output->name != NULL ?
 			    output->name : "screen", w, h, off_x, off_y);
 			pixman_image_composite(PIXMAN_OP_CONJOINT_SRC,
@@ -207,7 +207,7 @@ transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 	pixman_transform_from_pixman_f_transform(&transform, &ftransform);
 	pixman_image_set_transform(pixman_image, &transform);
 
-	DBG("composing %s for %s (area %dx%d+%d+%d) (mode %d)\n",
+	debug("composing %s for %s (area %dx%d+%d+%d) (mode %d)\n",
 	    option->filename, output->name != NULL ? output->name : "screen",
 	    output->width, output->height, 0, 0, option->mode);
 	pixman_image_composite(PIXMAN_OP_CONJOINT_SRC, pixman_image, NULL, dest,
@@ -222,14 +222,14 @@ put_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
 	uint32_t h, max_height, row_len, sub_height;
 	xcb_image_t *sub;
 
-	DBG("xcb image (%dx%d) to %s (%dx%d+%d+%d)\n",
+	debug("xcb image (%dx%d) to %s (%dx%d+%d+%d)\n",
 	    xcb_image->width, xcb_image->height,
 	    output->name != NULL ? output->name : "screen", output->width,
 	    output->height, output->x, output->y);
 
 	max_height = get_max_rows_per_request(c, xcb_image, UINT32_MAX / 4);
 	if (max_height < xcb_image->height) {
-		DBG("image exceeds request size limitations\n");
+		debug("image exceeds request size limitations\n");
 
 		/* adjust for better performance */
 		max_height = get_max_rows_per_request(c, xcb_image, 65536);
@@ -259,7 +259,7 @@ put_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
 				errx(1, "failed to create xcb image");
 		}
 
-		DBG("put image (%dx%d+0+%d) to %s (%dx%d+%d+%d)\n",
+		debug("put image (%dx%d+0+%d) to %s (%dx%d+%d+%d)\n",
 		    sub->width, sub->height, h,
 		    output->name != NULL ? output->name : "screen",
 		    sub->width, sub_height, output->x,
@@ -400,7 +400,7 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 		outputs = get_outputs(c, screen);
 	}
 
-	DBG("creating pixmap (%dx%d)\n", width, height);
+	debug("creating pixmap (%dx%d)\n", width, height);
 	pixmap = xcb_generate_id(c);
 	xcb_create_pixmap(c, screen->root_depth, pixmap, screen->root, width,
 	    height);
@@ -460,7 +460,7 @@ process_event(wp_config_t *config, xcb_connection_t *c,
 	int snum;
 
 	randr_event = (xcb_randr_screen_change_notify_event_t *)event;
-	DBG("event received: response_type=%u, sequence=%u\n",
+	debug("event received: response_type=%u, sequence=%u\n",
 	    randr_event->response_type, randr_event->sequence);
 	it = xcb_setup_roots_iterator(xcb_get_setup(c));
 	for (snum = 0; it.rem; snum++, xcb_screen_next(&it)) {
@@ -499,7 +499,7 @@ main(int argc, char *argv[])
 	if (argc < 2 || (config = parse_config(++argv)) == NULL)
 		usage();
 
-	if (config->daemon && daemon(0, 0) < 0)
+	if (config->daemon && daemon(0, show_debug) < 0)
 		warnx("failed to daemonize");
 
 	c = xcb_connect(NULL, NULL);

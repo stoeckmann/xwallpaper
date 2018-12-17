@@ -46,14 +46,14 @@ load_xpm(xcb_connection_t *c, xcb_screen_t *screen, FILE *fp)
 
 	if ((fd = fileno(fp)) == -1 || fstat(fd, &st) ||
 	    st.st_size < 0 || (uintmax_t)st.st_size > (uintmax_t)SIZE_MAX) {
-		DBG("failed to handle size of XPM file\n");
+		debug("failed to handle size of XPM file\n");
 		return NULL;
 	}
 
 	buf = xmalloc((size_t)st.st_size);
 	if (fread(buf, (size_t)st.st_size, 1, fp) != 1 ||
 	    XpmCreateXpmImageFromBuffer(buf, &xpm_image, &xpm_info)) {
-		DBG("failed to parse XPM file\n");
+		debug("failed to parse XPM file\n");
 		free(buf);
 		return NULL;
 	}

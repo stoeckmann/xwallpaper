@@ -160,7 +160,9 @@ parse_config(char **argv)
 				return NULL;
 			}
 			config->daemon = 1;
-		} else if (strcmp(argv[0], "--screen") == 0) {
+		} else if (strcmp(argv[0], "--debug") == 0)
+			show_debug = 1;
+		else if (strcmp(argv[0], "--screen") == 0) {
 			if (*++argv == NULL) {
 				warnx("missing argument for --screen");
 				return NULL;

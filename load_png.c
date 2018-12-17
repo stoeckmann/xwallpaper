@@ -60,14 +60,14 @@ load_png(FILE *fp)
 		errx(1, "failed to initialize png struct");
 
 	if (setjmp(png_jmpbuf(png_ptr))) {
-		DBG("failed to parse file as PNG\n");
+		debug("failed to parse file as PNG\n");
 		png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
 		return NULL;
 	}
 
 	info_ptr = png_create_info_struct(png_ptr);
 	if (info_ptr == NULL) {
-		DBG("failed to initialize png info");
+		debug("failed to initialize png info");
 		png_destroy_read_struct(&png_ptr, NULL, NULL);
 		return NULL;
 	}

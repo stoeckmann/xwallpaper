@@ -112,7 +112,7 @@ stage1_sandbox(void)
 	scmp_filter_ctx ctx;
 
 	if (!use_seccomp()) {
-		DBG("Linked with libseccomp, but kernel has no support.");
+		debug("Linked with libseccomp, but kernel has no support.");
 		return;
 	}
 
@@ -164,7 +164,7 @@ stage2_sandbox(void)
 	scmp_filter_ctx ctx;
 
 	if (!use_seccomp()) {
-		DBG("Linked with libseccomp, but kernel has no support.");
+		debug("Linked with libseccomp, but kernel has no support.");
 		return;
 	}
 

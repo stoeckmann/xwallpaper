@@ -126,7 +126,7 @@ load_jpeg(FILE *fp)
 	wp_err.mgr.error_exit = error_jpg;
 
 	if (setjmp(wp_err.env)) {
-		DBG("failed to parse input as JPEG\n");
+		debug("failed to parse input as JPEG\n");
 		jpeg_destroy_decompress(&cinfo);
 		free(pixels);
 		return NULL;

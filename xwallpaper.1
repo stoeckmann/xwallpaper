@@ -21,6 +21,7 @@
 .Nm xwallpaper
 .Op Fl Fl screen Ar screen
 .Op Fl Fl daemon
+.Op Fl Fl debug
 .Op Fl Fl no-randr
 .Op Fl Fl output Ar output
 .Op Fl Fl center Ar file
@@ -52,6 +53,12 @@ Keeps
 running in background, listening for RandR events. In this mode, the
 wallpapers are redrawn when output sizes change. This option can only be used
 when RandR support is available and activated.
+.It Fl Fl debug
+Displays debug messages on the standard error output while
+.Nm xwallpaper
+is running.  If used in conjunction with
+.Fl Fl daemon
+the process will not modify the standard input and outputs.
 .It Fl Fl maximize Ar file
 Maximizes input file to fit screen without cropping.
 This could mean zooming in or out,

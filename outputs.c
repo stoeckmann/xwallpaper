@@ -128,7 +128,7 @@ get_randr_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 		outputs[j].y = crtc_reply->y;
 		outputs[j].width = crtc_reply->width;
 		outputs[j].height = crtc_reply->height;
-		DBG("output detected: %s, %dx%d+%d+%d\n", outputs[j].name,
+		debug("output detected: %s, %dx%d+%d+%d\n", outputs[j].name,
 		    outputs[j].width, outputs[j].height, outputs[j].x,
 		    outputs[j].y);
 		j++;
@@ -139,7 +139,7 @@ get_randr_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 	outputs[j].y = 0;
 	outputs[j].width = screen->width_in_pixels;
 	outputs[j].height = screen->height_in_pixels;
-	DBG("(randr) screen dimensions: %dx%d+%d+%d\n", outputs[j].width,
+	debug("(randr) screen dimensions: %dx%d+%d+%d\n", outputs[j].width,
 	    outputs[j].height, outputs[j].x, outputs[j].y);
 	return outputs;
 }
@@ -162,7 +162,7 @@ get_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 	outputs[0].y = 0;
 	outputs[0].width = screen->width_in_pixels;
 	outputs[0].height = screen->height_in_pixels;
-	DBG("(no randr) screen dimensions: %dx%d+%d+%d\n",
+	debug("(no randr) screen dimensions: %dx%d+%d+%d\n",
 	    outputs[0].width, outputs[0].height, outputs[0].x, outputs[0].y);
 	return outputs;
 }
