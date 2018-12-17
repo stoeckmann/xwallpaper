@@ -536,7 +536,10 @@ main(int argc, char *argv[])
 		for (snum = 0; it.rem; snum++, xcb_screen_next(&it))
 			xcb_request_check(c, xcb_randr_select_input(c, it.data->root,
 			    XCB_RANDR_NOTIFY_MASK_SCREEN_CHANGE));
-		daemon(0, 0);
+
+		if (daemon(0, 0) < 0)
+		    warnx("failed to daemonize");
+
 		while ((event = xcb_wait_for_event(c)) != NULL)
 			process_event(config, c, event);
 	}
