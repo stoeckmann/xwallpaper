@@ -40,12 +40,15 @@ static int
 add_stage2_rules(scmp_filter_ctx ctx)
 {
 	/* add pledge stdio and additionally needed system calls */
-	return seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(clock_getres), 0) ||
+	return seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(access), 0) ||
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(brk), 0) ||
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(clock_getres), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(clock_gettime), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(close), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(dup), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(dup2), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(dup3), 0) ||
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(exit_group), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(fchdir), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(fcntl), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(fcntl64), 0) ||
@@ -80,6 +83,7 @@ add_stage2_rules(scmp_filter_ctx ctx)
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(pipe), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(pipe2), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(poll), 0) ||
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(prctl), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(preadv), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(pwritev), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(read), 0) ||
@@ -99,11 +103,7 @@ add_stage2_rules(scmp_filter_ctx ctx)
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(wait4), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(write), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(writev), 0) ||
-	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(uname), 0) ||
-	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(access), 0) ||
-	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(prctl), 0) ||
-	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(brk), 0) ||
-	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(exit_group), 0);
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(uname), 0);
 }
 
 void
@@ -119,37 +119,37 @@ stage1_sandbox(void)
 	ctx = seccomp_init(SCMP_ACT_KILL);
 	if (ctx == NULL ||
 	    /* pledge: dns */
-	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(sendto), 0) ||
-	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(recvfrom), 0) ||
-	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(socket), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(connect), 0) ||
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(recvfrom), 0) ||
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(sendto), 0) ||
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(socket), 0) ||
 	    /* pledge: inet+unix */
-	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(listen), 0) ||
-	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(bind), 0) ||
-	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(accept4), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(accept), 0) ||
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(accept4), 0) ||
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(bind), 0) ||
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(listen), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(getpeername), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(getsockname), 0) ||
-	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(setsockopt), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(getsockopt), 0) ||
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(setsockopt), 0) ||
 	    /* pledge: rpath */
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(chdir), 0) ||
-	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(getcwd), 0) ||
-	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(open), 0) ||
-	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(openat), 0) ||
-	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(faccessat), 0) ||
-	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(readlinkat), 0) ||
-	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(lstat), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(chmod), 0) ||
-	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(fchmod), 0) ||
-	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(fchmodat), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(chown), 0) ||
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(faccessat), 0) ||
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(fchmodat), 0) ||
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(fchmod), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(fchown), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(fchownat), 0) ||
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(getcwd), 0) ||
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(lstat), 0) ||
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(open), 0) ||
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(openat), 0) ||
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(readlinkat), 0) ||
 	    /* pledge: proc */
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(clone), 0) ||
-	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(setsid), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(set_robust_list), 0) ||
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(setsid), 0) ||
 	    /* seccomp for stage 2 */
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(seccomp), 0) ||
 	    add_stage2_rules(ctx) ||
