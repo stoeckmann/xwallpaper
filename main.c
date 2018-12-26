@@ -445,7 +445,7 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-"usage: xwallpaper [--screen <screen>] [--daemon] [--no-randr]\n"
+"usage: xwallpaper [--screen <screen>] [--daemon] [--debug] [--no-randr]\n"
 "  [--output <output>] [--center <file>] [--maximize <file>]\n"
 "  [--stretch <file>] [--tile <file>] [--zoom <file>] [--version]\n");
 	exit(1);
