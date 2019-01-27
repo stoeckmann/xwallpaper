@@ -75,11 +75,10 @@ static wp_output_t *
 get_randr_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 {
 	wp_output_t *outputs;
-	int len;
 	xcb_randr_get_screen_resources_cookie_t resources_cookie;
 	xcb_randr_get_screen_resources_reply_t *resources_reply;
 	xcb_randr_output_t *xcb_outputs;
-	int i, j;
+	int i, j, len;
 	size_t n;
 
 	resources_cookie = xcb_randr_get_screen_resources(c, screen->root);
