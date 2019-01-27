@@ -83,6 +83,7 @@ add_stage2_rules(scmp_filter_ctx ctx)
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(pipe), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(pipe2), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(poll), 0) ||
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(ppoll), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(prctl), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(preadv), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(pwritev), 0) ||
