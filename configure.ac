@@ -40,7 +40,7 @@ else
   seccomp_ok="no"
 fi
 AS_IF([test "$seccomp_ok" = yes],
-  [AC_DEFINE(WITH_SECCOMP,[],[Define to 1 if you want seccomp support.])],[]
+  [AC_DEFINE(WITH_SECCOMP,[1],[Define to 1 if you want seccomp support.])],[]
 )
 AM_CONDITIONAL(BUILD_SECCOMP, [test "$seccomp_ok" = yes])
 
@@ -64,7 +64,7 @@ else
   randr_ok="no"
 fi
 AS_IF([test "$randr_ok" = yes],
-  [AC_DEFINE(WITH_RANDR,[],[Define to 1 if you want RandR support.])],[]
+  [AC_DEFINE(WITH_RANDR,[1],[Define to 1 if you want RandR support.])],[]
 )
 AM_CONDITIONAL(BUILD_RANDR, [test "$randr_ok" = yes])
 
@@ -88,7 +88,7 @@ else
   jpeg_ok="no"
 fi
 AS_IF([test "$jpeg_ok" = yes],
-  [AC_DEFINE(WITH_JPEG,[],[Define to 1 if you want JPEG support.])],[]
+  [AC_DEFINE(WITH_JPEG,[1],[Define to 1 if you want JPEG support.])],[]
 )
 AM_CONDITIONAL(BUILD_JPEG, [test "$jpeg_ok" = yes])
 
@@ -112,7 +112,7 @@ else
   png_ok="no"
 fi
 AS_IF([test "$png_ok" = yes],
-  [AC_DEFINE(WITH_PNG,[],[Define to 1 if you want PNG support.])],[]
+  [AC_DEFINE(WITH_PNG,[1],[Define to 1 if you want PNG support.])],[]
 )
 AM_CONDITIONAL(BUILD_PNG, [test "$png_ok" = yes])
 
@@ -136,7 +136,7 @@ else
   xpm_ok="no"
 fi
 AS_IF([test "$xpm_ok" = yes],
-  [AC_DEFINE(WITH_XPM,[],[Define to 1 if you want XPM support.])],[]
+  [AC_DEFINE(WITH_XPM,[1],[Define to 1 if you want XPM support.])],[]
 )
 AM_CONDITIONAL(BUILD_XPM, [test "$xpm_ok" = yes])
 
