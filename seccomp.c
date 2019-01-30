@@ -26,6 +26,7 @@
 #include <seccomp.h>
 #include <unistd.h>
 
+#include "config.h"
 #include "functions.h"
 
 static int
@@ -37,7 +38,7 @@ use_seccomp(void)
 }
 
 static int
-add_stage2_rules(scmp_filter_ctx ctx)
+add_common_stage2_rules(scmp_filter_ctx ctx)
 {
 	/* add pledge stdio and additionally needed system calls */
 	return seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(access), 0) ||
@@ -154,7 +155,7 @@ stage1_sandbox(void)
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(setsid), 0) ||
 	    /* seccomp for stage 2 */
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(seccomp), 0) ||
-	    add_stage2_rules(ctx) ||
+	    add_common_stage2_rules(ctx) ||
 	    seccomp_load(ctx))
 		err(1, "failed to set up stage 1 seccomp");
 	seccomp_release(ctx);
@@ -171,7 +172,18 @@ stage2_sandbox(void)
 	}
 
 	ctx = seccomp_init(SCMP_ACT_KILL);
-	if (ctx == NULL || add_stage2_rules(ctx) || seccomp_load(ctx))
+	if (ctx == NULL || add_common_stage2_rules(ctx) ||
+#if defined (WITH_JPEG) && defined(__linux__) && (defined(__aarch64__) || \
+    defined(__arm__) || defined(__mips__) || defined(__powerpc64__) || \
+    defined(__powerpc__))
+	    /*
+	     * libjpeg opens /proc/cpuinfo on these architectures;
+	     * deny the access with error instead of termination.
+	     */
+	    seccomp_rule_add(ctx, SCMP_ACT_ERRNO(1), SCMP_SYS(open), 0) ||
+	    seccomp_rule_add(ctx, SCMP_ACT_ERRNO(1), SCMP_SYS(openat), 0) ||
+#endif /* WITH_JPEG and /proc/cpuinfo */
+	    seccomp_load(ctx))
 		err(1, "failed to set up stage 2 seccomp");
 	seccomp_release(ctx);
 }
