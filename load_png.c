@@ -43,13 +43,12 @@ load_png(FILE *fp)
 {
 	pixman_image_t *img;
 	png_bytepp rows;
-	uint32_t *pixel, *pixels;
-	int trans;
+	uint32_t *p, *pixels;
+	png_byte type, depth;
 	png_structp png_ptr;
 	png_infop info_ptr;
-	png_uint_32 x, y, width, height;
+	png_uint_32 y, width, height;
 	size_t len;
-	unsigned char *p;
 
 	if (!is_png(fp))
 		return NULL;
@@ -74,21 +73,46 @@ load_png(FILE *fp)
 
 	png_init_io(png_ptr, fp);
 
-	trans = PNG_TRANSFORM_EXPAND;
-	trans |= PNG_TRANSFORM_GRAY_TO_RGB;
-	trans |= PNG_TRANSFORM_STRIP_16;
-	trans |= PNG_TRANSFORM_STRIP_ALPHA;
-	png_read_png(png_ptr, info_ptr, trans, NULL);
-
+	png_read_info(png_ptr, info_ptr);
 	width = png_get_image_width(png_ptr, info_ptr);
 	height = png_get_image_height(png_ptr, info_ptr);
-	rows = png_get_rows(png_ptr, info_ptr);
+	type = png_get_color_type(png_ptr, info_ptr);
+	depth = png_get_bit_depth(png_ptr, info_ptr);
+
+	switch (type) {
+	case PNG_COLOR_TYPE_GRAY:
+	case PNG_COLOR_TYPE_GRAY_ALPHA:
+		if (depth < 8)
+			png_set_expand_gray_1_2_4_to_8(png_ptr);
+		else if (depth == 16)
+			png_set_strip_16(png_ptr);
+		png_set_gray_to_rgb(png_ptr);
+		break;
+	case PNG_COLOR_TYPE_PALETTE:
+		png_set_palette_to_rgb(png_ptr);
+		if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS))
+			png_set_tRNS_to_alpha(png_ptr);
+		break;
+	default:
+		break;
+	}
+	if (!(type & PNG_COLOR_MASK_ALPHA))
+		png_set_filler(png_ptr, 0xff, PNG_FILLER_AFTER);
+	if (type & PNG_COLOR_MASK_COLOR)
+		png_set_bgr(png_ptr);
+	png_read_update_info(png_ptr, info_ptr);
 
 	SAFE_MUL3(len, width, height, sizeof(*pixels));
-	pixel = pixels = xmalloc(len);
-	for (y = 0; y < height; y++)
-		for (p = rows[y], x = 0; x < width; x++, p += 3)
-			*pixel++ = (p[0] << 16) | (p[1] << 8) | p[2];
+	p = pixels = xmalloc(len);
+
+	SAFE_MUL(len, height, sizeof(*rows));
+	rows = xmalloc(len);
+	for (y = 0; y < height; y++) {
+		rows[y] = (png_bytep)p;
+		p += width;
+	}
+	png_read_image(png_ptr, rows);
+	free(rows);
 
 	png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
 
