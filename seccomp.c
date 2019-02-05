@@ -177,7 +177,7 @@ stage2_sandbox(void)
     defined(__arm__) || defined(__mips__) || defined(__powerpc64__) || \
     defined(__powerpc__))
 	    /*
-	     * libjpeg opens /proc/cpuinfo on these architectures;
+	     * libjpeg-turbo opens /proc/cpuinfo on these architectures;
 	     * deny the access with error instead of termination.
 	     */
 	    seccomp_rule_add(ctx, SCMP_ACT_ERRNO(1), SCMP_SYS(open), 0) ||

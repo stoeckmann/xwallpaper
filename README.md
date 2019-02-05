@@ -30,10 +30,10 @@ Building and installing is as simple as:
     make
     make install
 
-To support all file formats, your system needs libjpeg, libpng, and libXpm.
-If one of the libraries is not found, the specific file format will not be
-supported. Also, if you compile for OpenBSD, the system call pledge is
-automatically used. On Linux systems, libseccomp is used if available to
+To support all file formats, your system needs libjpeg-turbo, libpng, and
+libXpm. If one of the libraries is not found, the specific file format will
+not be supported. Also, if you compile for OpenBSD, the system call pledge
+is automatically used. On Linux systems, libseccomp is used if available to
 filter system calls.
 
 ## License

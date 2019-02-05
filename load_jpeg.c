@@ -41,84 +41,14 @@ error_jpg(j_common_ptr common)
 	longjmp(wp_err->env, 1);
 }
 
-static void
-scan_cmyk(struct jpeg_decompress_struct *cinfo, JSAMPARRAY scanline,
-    uint32_t *pixels)
-{
-	JDIMENSION x, y, width, height;
-	JSAMPLE *p;
-
-	width = cinfo->image_width;
-	height = cinfo->image_height;
-
-	for (y = 0; y < height; y++) {
-		jpeg_read_scanlines(cinfo, scanline, 1);
-		p = scanline[0];
-		for (x = 0; x < width; x++) {
-			uint8_t c, m, y, k;
-
-			c = 255 - p[0];
-			m = 255 - p[1];
-			y = 255 - p[2];
-			k = 255 - p[3];
-
-			*pixels++ = (255 - (c + k)) << 16 |
-			    (255 - (m + k)) << 8 |
-			    (255 - (y + k));
-			p += cinfo->output_components;
-		}
-	}
-}
-
-static void
-scan_gray(struct jpeg_decompress_struct *cinfo, JSAMPARRAY scanline,
-    uint32_t *pixels)
-{
-	JDIMENSION x, y, width, height;
-	JSAMPLE *p;
-
-	width = cinfo->image_width;
-	height = cinfo->image_height;
-
-	for (y = 0; y < height; y++) {
-		jpeg_read_scanlines(cinfo, scanline, 1);
-		p = scanline[0];
-		for (x = 0; x < width; x++) {
-			*pixels++ = p[0] << 16 | p[0] << 8 | p[0];
-			p += cinfo->output_components;
-		}
-	}
-}
-
-static void
-scan_rgb(struct jpeg_decompress_struct *cinfo, JSAMPARRAY scanline,
-    uint32_t *pixels)
-{
-	JDIMENSION x, y, width, height;
-	JSAMPLE *p;
-
-	width = cinfo->image_width;
-	height = cinfo->image_height;
-
-	for (y = 0; y < height; y++) {
-		jpeg_read_scanlines(cinfo, scanline, 1);
-		p = scanline[0];
-		for (x = 0; x < width; x++) {
-			*pixels++ = p[0] << 16 | p[1] << 8 | p[2];
-			p += cinfo->output_components;
-		}
-	}
-}
-
 pixman_image_t *
 load_jpeg(FILE *fp)
 {
 	wp_err_t wp_err;
 	pixman_image_t *img;
-	JSAMPARRAY scanline;
-	JDIMENSION width, height;
+	JDIMENSION y, x, width, height;
 	struct jpeg_decompress_struct cinfo;
-	uint32_t *pixels;
+	uint32_t *p, *pixels;
 	size_t len;
 
 	pixels = NULL;
@@ -126,7 +56,7 @@ load_jpeg(FILE *fp)
 	wp_err.mgr.error_exit = error_jpg;
 
 	if (setjmp(wp_err.env)) {
-		debug("failed to parse input as JPEG\n");
+		debug("failed to parse input as (RGB) JPEG\n");
 		jpeg_destroy_decompress(&cinfo);
 		free(pixels);
 		return NULL;
@@ -138,33 +68,21 @@ load_jpeg(FILE *fp)
 
 	width = cinfo.image_width;
 	height = cinfo.image_height;
+	cinfo.out_color_space = JCS_EXT_BGRA;
 
+	cinfo.do_fancy_upsampling = FALSE;
+        cinfo.do_block_smoothing = FALSE;
 	jpeg_start_decompress(&cinfo);
 
-	scanline = (*cinfo.mem->alloc_sarray)((j_common_ptr) &cinfo,
-	    JPOOL_IMAGE, cinfo.output_width * cinfo.output_components, 1);
-
 	SAFE_MUL3(len, width, height, sizeof(*pixels));
-	pixels = xmalloc(len);
+	p = pixels = xmalloc(len);
 
-	if (cinfo.jpeg_color_space == JCS_YCbCr)
-		cinfo.out_color_space = JCS_RGB;
-	else if (cinfo.jpeg_color_space == JCS_YCCK)
-		cinfo.out_color_space = JCS_CMYK;
+	if (cinfo.output_components != 4)
+		longjmp(wp_err.env, 1);
 
-	switch (cinfo.out_color_space) {
-		case JCS_GRAYSCALE:
-			scan_gray(&cinfo, scanline, pixels);
-			break;
-		case JCS_CMYK:
-			scan_cmyk(&cinfo, scanline, pixels);
-			break;
-		default:
-			if (cinfo.output_components < 3)
-				longjmp(wp_err.env, 1);
-			cinfo.out_color_space = JCS_RGB;
-			scan_rgb(&cinfo, scanline, pixels);
-			break;
+	for (y = 0; y < height; y++) {
+		jpeg_read_scanlines(&cinfo, (JSAMPARRAY)&p, 1);
+		p += width;
 	}
 
 	jpeg_finish_decompress(&cinfo);
