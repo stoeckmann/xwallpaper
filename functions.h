@@ -32,18 +32,10 @@
 #define MODE_TILE	4
 #define MODE_ZOOM	5
 
-#ifdef DEBUG
-  #define DBG(fmt, ...) do {			\
-	fprintf(stderr, fmt, ##__VA_ARGS__);	\
-  } while (0)
-#else
-  #define DBG(fmt, ...)
-#endif /* DEBUG */
-
 #define SAFE_MUL(res, x, y) do {					 \
-        if ((y) != 0 && SIZE_MAX / (y) < (x))				 \
-                errx(1, "memory allocation would exceed system limits"); \
-        res = (x) * (y);						 \
+	if ((y) != 0 && SIZE_MAX / (y) < (x))				 \
+		errx(1, "memory allocation would exceed system limits"); \
+	res = (x) * (y);						 \
 } while (0)
 
 #define SAFE_MUL3(res, x, y, z) do {	\
