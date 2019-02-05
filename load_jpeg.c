@@ -70,8 +70,6 @@ load_jpeg(FILE *fp)
 	height = cinfo.image_height;
 	cinfo.out_color_space = JCS_EXT_BGRA;
 
-	cinfo.do_fancy_upsampling = FALSE;
-        cinfo.do_block_smoothing = FALSE;
 	jpeg_start_decompress(&cinfo);
 
 	SAFE_MUL3(len, width, height, sizeof(*pixels));
