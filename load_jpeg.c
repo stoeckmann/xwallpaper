@@ -31,7 +31,7 @@ typedef struct wp_err {
 	jmp_buf			env;
 } wp_err_t;
 
-void
+static void
 error_jpg(j_common_ptr common)
 {
 	wp_err_t *wp_err;
