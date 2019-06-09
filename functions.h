@@ -43,6 +43,13 @@
 	SAFE_MUL(res, res, (y));	\
 } while (0)
 
+typedef struct wp_box {
+	uint16_t	width;
+	uint16_t	height;
+	uint16_t	x_off;
+	uint16_t	y_off;
+} wp_box_t;
+
 typedef struct wp_buffer {
 	FILE		*fp;
 	pixman_image_t	*pixman_image;
@@ -56,6 +63,7 @@ typedef struct wp_option {
 	int		 mode;
 	char		*output;
 	int		 screen;
+	wp_box_t	*trim;
 } wp_option_t;
 
 typedef struct wp_config {

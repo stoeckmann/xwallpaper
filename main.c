@@ -96,16 +96,30 @@ load_pixman_images(xcb_connection_t *c, xcb_screen_t *screen,
 
 	for (option = options; option->filename != NULL; option++)
 		if (option->buffer->pixman_image == NULL) {
+			int height, width;
+
 			debug("loading %s\n", option->filename);
 			img = load_pixman_image(c, screen, option->buffer->fp);
 			if (img == NULL)
 				errx(1, "failed to parse %s", option->filename);
 			option->buffer->pixman_image = img;
 			fclose(option->buffer->fp);
-			if (pixman_image_get_width(img) > UINT16_MAX ||
-			    pixman_image_get_height(img) > UINT16_MAX)
+
+			height = pixman_image_get_height(img);
+			width = pixman_image_get_width(img);
+
+			if (height > UINT16_MAX || width > UINT16_MAX)
 				errx(1, "%s has illegal dimensions",
 				    option->filename);
+
+			if (option->trim != NULL) {
+				wp_box_t *trim = option->trim;
+
+				if (height < trim->y_off + trim->height ||
+				    width < trim->x_off + trim->width)
+					errx(1, "%s is smaller than trim box",
+					    option->filename);
+			}
 		}
 }
 
@@ -113,12 +127,22 @@ static void
 tile(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 {
 	pixman_image_t *pixman_image;
-	int pixman_width, pixman_height;
+	int src_width, src_height, src_x, src_y;
 	uint16_t off_x, off_y;
 
 	pixman_image = option->buffer->pixman_image;
-	pixman_width = pixman_image_get_width(pixman_image);
-	pixman_height = pixman_image_get_height(pixman_image);
+
+	if (option->trim == NULL) {
+		src_width = pixman_image_get_width(pixman_image);
+		src_height = pixman_image_get_height(pixman_image);
+		src_x = 0;
+		src_y = 0;
+	} else {
+		src_width = option->trim->width;
+		src_height = option->trim->height;
+		src_x = option->trim->x_off;
+		src_y = option->trim->y_off;
+	}
 
 	/* reset transformation and filter of transform calls */
 	pixman_image_set_transform(pixman_image, NULL);
@@ -129,27 +153,27 @@ tile(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 	 * screen with RandR. If possible, xwallpaper will let
 	 * X do the tiling natively.
          */
-	for (off_y = 0; off_y < output->height; off_y += pixman_height) {
+	for (off_y = 0; off_y < output->height; off_y += src_height) {
 		uint16_t h;
 
-		if (off_y + pixman_height > output->height)
+		if (off_y + src_height > output->height)
 			h = output->height - off_y;
 		else
-			h = pixman_height;
+			h = src_height;
 
-		for (off_x = 0; off_x < output->width; off_x += pixman_width) {
+		for (off_x = 0; off_x < output->width; off_x += src_width) {
 			uint16_t w;
 
-			if (off_x + pixman_width > output->width)
+			if (off_x + src_width > output->width)
 				w = output->width - off_x;
 			else
-				w = pixman_width;
+				w = src_width;
 
 			debug("tiling %s for %s (area %dx%d+%d+%d)\n",
 			    option->filename, output->name != NULL ?
 			    output->name : "screen", w, h, off_x, off_y);
 			pixman_image_composite(PIXMAN_OP_CONJOINT_SRC,
-			    pixman_image, NULL, dest, 0, 0, 0, 0,
+			    pixman_image, NULL, dest, src_x, src_y, 0, 0,
 			    off_x, off_y, w, h);
 		}
 	}
@@ -162,19 +186,30 @@ transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 	pixman_f_transform_t ftransform;
 	pixman_transform_t transform;
 	pixman_filter_t filter;
-	int pixman_width, pixman_height;
+	int src_width, src_height;
 	uint16_t xcb_width, xcb_height;
 	float w_scale, h_scale, scale;
 	float translate_x, translate_y;
+	float off_x, off_y;
 
 	pixman_image = option->buffer->pixman_image;
-	pixman_width = pixman_image_get_width(pixman_image);
-	pixman_height = pixman_image_get_height(pixman_image);
 	xcb_width = output->width;
 	xcb_height = output->height;
 
-	w_scale = (float)pixman_width / xcb_width;
-	h_scale = (float)pixman_height / xcb_height;
+	if (option->trim == NULL) {
+		src_width = pixman_image_get_width(pixman_image);
+		src_height = pixman_image_get_height(pixman_image);
+		off_x = 0;
+		off_y = 0;
+	} else {
+		src_width = option->trim->width;
+		src_height = option->trim->height;
+		off_x = (float)option->trim->x_off;
+		off_y = (float)option->trim->y_off;
+	}
+
+	w_scale = (float)src_width / xcb_width;
+	h_scale = (float)src_height / xcb_height;
 	filter = PIXMAN_FILTER_BEST;
 
 	switch (option->mode) {
@@ -196,8 +231,8 @@ transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 			break;
 	}
 
-	translate_x = (pixman_width / w_scale - xcb_width) / 2;
-	translate_y = (pixman_height / h_scale - xcb_height) / 2;
+	translate_x = (src_width / w_scale - xcb_width) / 2 + off_x / w_scale;
+	translate_y = (src_height / h_scale - xcb_height) / 2 + off_y / h_scale;
 
 	pixman_f_transform_init_translate(&ftransform,
 	    translate_x, translate_y);
@@ -446,8 +481,8 @@ usage(void)
 {
 	fprintf(stderr,
 "usage: xwallpaper [--screen <screen>] [--daemon] [--debug] [--no-randr]\n"
-"  [--output <output>] [--center <file>] [--maximize <file>]\n"
-"  [--stretch <file>] [--tile <file>] [--zoom <file>] [--version]\n");
+"  [--trim widthxheight[+x+y]] [--output <output>] [--center <file>]\n"
+"  [--maximize <file>] [--stretch <file>] [--tile <file>] [--zoom <file>]\n");
 	exit(1);
 }
 

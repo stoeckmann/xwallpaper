@@ -139,6 +139,43 @@ parse_screen(char *screen)
 	return value;
 }
 
+static int
+parse_box(char *s, wp_box_t **box)
+{
+	wp_box_t b;
+	char *endptr;
+	char sign;
+	uint16_t val;
+
+	/* empty string resets box */
+	if (s == NULL || s[0] == '\0') {
+		*box = NULL;
+		return 0;
+	}
+
+	switch (sscanf(s, "%hux%hu+%hu+%hu", &b.width, &b.height,
+	    &b.x_off, &b.y_off)) {
+	case 2:
+		b.x_off = 0;
+		b.y_off = 0;
+		break;
+	case 4:
+		break;
+	default:
+		return 1;
+		/* NOTREACHED */
+	}
+
+	if (UINT16_MAX - b.width < b.x_off ||
+	    UINT16_MAX - b.height < b.y_off)
+		return 1;
+
+	*box = xmalloc(sizeof(*box));
+	memcpy(*box, &b, sizeof(b));
+
+	return 0;
+}
+
 wp_config_t *
 parse_config(char **argv)
 {
@@ -195,6 +232,15 @@ parse_config(char **argv)
 				return NULL;
 			}
 			has_randr = 0;
+		} else if (strcmp(argv[0], "--trim") == 0) {
+			if (*++argv == NULL) {
+				warnx("missing argument for --trim");
+				return NULL;
+			}
+			if (parse_box(*argv, &last.trim)) {
+				warnx("invalid trim box: %s\n", *argv);
+				return NULL;
+			}
 		} else if (strcmp(argv[0], "--version") == 0) {
 			puts(VERSION);
 			exit(0);

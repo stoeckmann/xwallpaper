@@ -6,6 +6,7 @@ typeset -A opt_args
 _arguments \
     '--daemon[enable daemon mode]' \
     '--no-randr[disable randr support]' \
+    '--trim[trim box]:widthxheight+x+y' \
     '*--screen[X screen number]:X screen number' \
     '*--output[output device]:output device:->outputs' \
     '*--center[center input file on the screen]:filename:_files' \

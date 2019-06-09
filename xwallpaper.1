@@ -23,6 +23,7 @@
 .Op Fl Fl daemon
 .Op Fl Fl debug
 .Op Fl Fl no-randr
+.Op Fl Fl trim Ar widthxheight[+x+y]
 .Op Fl Fl output Ar output
 .Op Fl Fl center Ar file
 .Op Fl Fl maximize Ar file
@@ -69,6 +70,11 @@ The image itself will be centered on screen.
 .It Fl Fl no-randr
 Ignores individual outputs and uses the whole screen instead.
 This is the area that spans across all different outputs (monitors).
+.It Fl Fl trim Ar widthxheight+x+y
+Specifies area of interest in source file. If output mode tries to output more
+pixels than specified with trim box, then the adjacent pixels around the
+box will be added to output. Black pixels are only added if no further source
+pixels are left.
 .It Fl Fl output Ar output
 Specifies the output on which a subsequently supplied file shall be set as
 wallpaper.
