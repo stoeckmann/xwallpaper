@@ -5,6 +5,7 @@ typeset -A opt_args
 
 _arguments \
     '--daemon[enable daemon mode]' \
+    '--debug[enable debug mode]' \
     '--no-randr[disable randr support]' \
     '--trim[trim box]:widthxheight+x+y' \
     '*--screen[X screen number]:X screen number' \
