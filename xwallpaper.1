@@ -44,8 +44,8 @@ backgrounds.
 The various options are as follows:
 .Bl -tag -width Ds
 .It Fl Fl center Ar file
-Centers the input file on the screen.
-If the dimensions of the input file are smaller than the screen dimensions,
+Centers the input file on the output.
+If the dimensions of the input file are smaller than the output dimensions,
 the remaining area is filled black.
 If the input file dimensions are too large, parts of the image will be cropped.
 .It Fl Fl daemon
@@ -61,14 +61,14 @@ is running.  If used in conjunction with
 .Fl Fl daemon
 the process will not modify the standard input and outputs.
 .It Fl Fl maximize Ar file
-Maximizes input file to fit screen without cropping.
+Maximizes input file to fit output without cropping.
 This could mean zooming in or out,
-depending on the dimensions of the input file and the screen.
+depending on the dimensions of the input file and the output.
 This option guarantees that the whole image is seen.
-If the ratio does not fit the screen, the remaining area is filled black.
-The image itself will be centered on screen.
+If the ratio does not fit the output, the remaining area is filled black.
+The image itself will be centered on output.
 .It Fl Fl no-randr
-Ignores individual outputs and uses the whole screen instead.
+Ignores individual outputs and uses the whole output instead.
 This is the area that spans across all different outputs (monitors).
 .It Fl Fl trim Ar widthxheight+x+y
 Specifies area of interest in source file. If output mode tries to output more
@@ -91,24 +91,24 @@ Please note that a screen is not a single monitor.
 See
 .Fl Fl output
 for such a use case above.
-If the screen could not be found, nothing happens.
+If the output could not be found, nothing happens.
 .It Fl Fl stretch Ar file
-Stretches input file to fully cover the screen.
-If the aspect ratio of the input file does not match the screen,
+Stretches input file to fully cover the output.
+If the aspect ratio of the input file does not match the output,
 then the ratio of the input file is adjusted.
 .It Fl Fl tile Ar file
 Uses tiling mode.
-Draws the input file at the upper left corner of the screen
-and repeats the image until the remaining area of the screen is covered.
+Draws the input file at the upper left corner of the output
+and repeats the image until the remaining area of the output is covered.
 .It Fl Fl version
 Prints version and exits.
 .It Fl Fl zoom Ar file
-Zooms input file to fit screen with cropping.
+Zooms input file to fit output with cropping.
 This could mean zooming in or out,
-depending on the dimensions of the input file and the screen.
-If the ratio does not fit the screen,
+depending on the dimensions of the input file and the output.
+If the ratio does not fit the output,
 parts of the input file will not be shown.
-The image itself will be centered on screen.
+The image itself will be centered on output.
 Default behaviour if no option was selected.
 .El
 .Pp
