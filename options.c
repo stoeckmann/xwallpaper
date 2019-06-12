@@ -169,7 +169,8 @@ parse_box(char *s, wp_box_t **box)
 	}
 
 	if (UINT16_MAX - b.width < b.x_off ||
-	    UINT16_MAX - b.height < b.y_off)
+	    UINT16_MAX - b.height < b.y_off ||
+	    b.width == 0 || b.height == 0)
 		return 1;
 
 	*box = xmalloc(sizeof(*box));
