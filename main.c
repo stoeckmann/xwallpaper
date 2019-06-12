@@ -213,22 +213,22 @@ transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 	filter = PIXMAN_FILTER_BEST;
 
 	switch (option->mode) {
-		case MODE_CENTER:
-			filter = PIXMAN_FILTER_FAST;
-			w_scale = 1;
-			h_scale = 1;
-			break;
-		case MODE_MAXIMIZE:
-			scale = w_scale < h_scale ? h_scale : w_scale;
-			w_scale = scale;
-			h_scale = scale;
-			break;
-		case MODE_ZOOM:
-			scale = w_scale > h_scale ? h_scale : w_scale;
-			w_scale = scale;
-			h_scale = scale;
-		default:
-			break;
+	case MODE_CENTER:
+		filter = PIXMAN_FILTER_FAST;
+		w_scale = 1;
+		h_scale = 1;
+		break;
+	case MODE_MAXIMIZE:
+		scale = w_scale < h_scale ? h_scale : w_scale;
+		w_scale = scale;
+		h_scale = scale;
+		break;
+	case MODE_ZOOM:
+		scale = w_scale > h_scale ? h_scale : w_scale;
+		w_scale = scale;
+		h_scale = scale;
+	default:
+		break;
 	}
 
 	translate_x = (src_width / w_scale - xcb_width) / 2 + off_x / w_scale;
