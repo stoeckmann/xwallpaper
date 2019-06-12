@@ -149,12 +149,6 @@ parse_box(char *s, wp_box_t **box)
 	char sign;
 	uint16_t val;
 
-	/* empty string resets box */
-	if (s == NULL || s[0] == '\0') {
-		*box = NULL;
-		return 0;
-	}
-
 	switch (sscanf(s, "%hux%hu+%hu+%hu", &b.width, &b.height,
 	    &b.x_off, &b.y_off)) {
 	case 2:
@@ -218,6 +212,7 @@ parse_config(char **argv)
 				return NULL;
 			}
 			add_option(config, last);
+			last.trim = NULL;
 			last.output = *argv;
 		} else if ((last.mode = parse_mode(*argv)) != -1) {
 			if (*++argv == NULL) {
