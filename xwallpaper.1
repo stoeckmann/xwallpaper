@@ -26,6 +26,7 @@
 .Op Fl Fl trim Ar widthxheight[+x+y]
 .Op Fl Fl output Ar output
 .Op Fl Fl center Ar file
+.Op Fl Fl focus Ar file
 .Op Fl Fl maximize Ar file
 .Op Fl Fl stretch Ar file
 .Op Fl Fl tile Ar file
@@ -60,6 +61,14 @@ Displays debug messages on the standard error output while
 is running.  If used in conjunction with
 .Fl Fl daemon
 the process will not modify the standard input and outputs.
+.It Fl Fl focus Ar file
+In conjunction with
+.Fl Fl trim
+the specified trim box will be guaranteed to be visible on output, zooming
+out if needed. If black pixels would occur around the selection, the input
+image is zoomed in and moved to cover them as good as possible under the
+constraint of keeping the specified trim box (or whole image if no trim box has
+been specified) on output.
 .It Fl Fl maximize Ar file
 Maximizes input file to fit output without cropping.
 This could mean zooming in or out,
@@ -118,6 +127,9 @@ In that case, the last mode and file will be reused.
 .Sh EXAMPLES
 Centers a PNG file as a wallpaper on LVDS-1:
 .Dl $ xwallpaper --output LVDS-1 --center file.png
+.Pp
+Focuses on upper left corner of a JPEG file as a wallpaper on Virtual-1:
+.Dl $ xwallpaper --output Virtual-1 --trim 1x1+0+0 --focus file.jpg
 .Pp
 Tiles a PNG file as a wallpaper across all outputs:
 .Dl $ xwallpaper --no-randr --tile file.png

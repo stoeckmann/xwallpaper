@@ -27,10 +27,11 @@
 #include "config.h"
 
 #define MODE_CENTER	1
-#define MODE_MAXIMIZE	2
-#define MODE_STRETCH	3
-#define MODE_TILE	4
-#define MODE_ZOOM	5
+#define MODE_FOCUS	2
+#define MODE_MAXIMIZE	3
+#define MODE_STRETCH	4
+#define MODE_TILE	5
+#define MODE_ZOOM	6
 
 #define SAFE_MUL(res, x, y) do {					 \
 	if ((y) != 0 && SIZE_MAX / (y) < (x))				 \

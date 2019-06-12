@@ -116,6 +116,8 @@ parse_mode(char *mode)
 {
 	if (strcmp(mode, "--center") == 0)
 		return MODE_CENTER;
+	if (strcmp(mode, "--focus") == 0)
+		return MODE_FOCUS;
 	if (strcmp(mode, "--maximize") == 0)
 		return MODE_MAXIMIZE;
 	if (strcmp(mode, "--stretch") == 0)

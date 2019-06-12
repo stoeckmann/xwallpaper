@@ -34,6 +34,9 @@
 #define ATOM_ESETROOT "ESETROOT_PMAP_ID"
 #define ATOM_XSETROOT "_XROOTPMAP_ID"
 
+#define MINIMUM(x, y) (x) < (y) ? (x) : (y)
+#define MAXIMUM(x, y) (x) > (y) ? (x) : (y)
+
 static uint32_t
 get_max_rows_per_request(xcb_connection_t *c, xcb_image_t *image, uint32_t n)
 {
@@ -186,19 +189,24 @@ transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 	pixman_f_transform_t ftransform;
 	pixman_transform_t transform;
 	pixman_filter_t filter;
+	int mode;
+	int pix_width, pix_height;
 	int src_width, src_height;
 	uint16_t xcb_width, xcb_height;
 	float w_scale, h_scale, scale;
 	float translate_x, translate_y;
 	float off_x, off_y;
 
+	mode = option->mode;
 	pixman_image = option->buffer->pixman_image;
+	pix_width = pixman_image_get_width(pixman_image);
+	pix_height = pixman_image_get_height(pixman_image);
 	xcb_width = output->width;
 	xcb_height = output->height;
 
 	if (option->trim == NULL) {
-		src_width = pixman_image_get_width(pixman_image);
-		src_height = pixman_image_get_height(pixman_image);
+		src_width = pix_width;
+		src_height = pix_height;
 		off_x = 0;
 		off_y = 0;
 	} else {
@@ -208,11 +216,46 @@ transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 		off_y = (float)option->trim->y_off;
 	}
 
+	if (mode == MODE_FOCUS) {
+		int adj_x, adj_y, adj_width, adj_height;
+		float factor;
+
+		adj_width = src_width;
+		adj_height = src_height;
+
+		/* Check if image must be zoomed out to fit trim on screen. */
+		factor = MAXIMUM(1, (float)src_width / xcb_width);
+		factor = MAXIMUM(factor, (float)src_height / xcb_height);
+
+		/* Get in more pixels to fill output completely. */
+		adj_width = factor * xcb_width;
+		adj_height = factor * xcb_height;
+
+		/*
+		 * Find proper offset and avoid overlapping bounding box.
+		 *
+		 * If the image file lacks enough pixels around the trim box,
+		 * then black pixels on output are unfortunate but inevitable.
+		 * It is much more important to keep the constraint of having
+		 * all pixels within the trim box to be on screen.
+		 */
+		adj_x = MAXIMUM(0, off_x - (adj_width - src_width) / 2);
+		adj_y = MAXIMUM(0, off_y - (adj_height - src_height) / 2);
+		adj_width = MINIMUM(adj_width, pix_width - adj_x);
+		adj_height = MINIMUM(adj_height, pix_height - adj_y);
+
+		mode = MODE_MAXIMIZE;
+		off_x = adj_x;
+		off_y = adj_y;
+		src_width = adj_width;
+		src_height = adj_height;
+	}
+
 	w_scale = (float)src_width / xcb_width;
 	h_scale = (float)src_height / xcb_height;
 	filter = PIXMAN_FILTER_BEST;
 
-	switch (option->mode) {
+	switch (mode) {
 	case MODE_CENTER:
 		filter = PIXMAN_FILTER_FAST;
 		w_scale = 1;
@@ -482,7 +525,8 @@ usage(void)
 	fprintf(stderr,
 "usage: xwallpaper [--screen <screen>] [--daemon] [--debug] [--no-randr]\n"
 "  [--trim widthxheight[+x+y]] [--output <output>] [--center <file>]\n"
-"  [--maximize <file>] [--stretch <file>] [--tile <file>] [--zoom <file>]\n");
+"  [--focus <file>] [--maximize <file>] [--stretch <file>] [--tile <file>]\n"
+"  [--zoom <file>] [--version]\n");
 	exit(1);
 }
 
