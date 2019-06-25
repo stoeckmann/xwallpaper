@@ -218,18 +218,26 @@ transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 
 	if (mode == MODE_FOCUS) {
 		int adj_x, adj_y, adj_width, adj_height;
-		float factor;
+		float zoom;
 
 		adj_width = src_width;
 		adj_height = src_height;
 
 		/* Check if image must be zoomed out to fit trim on screen. */
-		factor = MAXIMUM(1, (float)src_width / xcb_width);
-		factor = MAXIMUM(factor, (float)src_height / xcb_height);
+		zoom = MAXIMUM(1, (float)src_width / xcb_width);
+		zoom = MAXIMUM(zoom, (float)src_height / xcb_height);
 
 		/* Get in more pixels to fill output completely. */
-		adj_width = factor * xcb_width;
-		adj_height = factor * xcb_height;
+		adj_width = xcb_width * zoom;
+		adj_height = xcb_height * zoom;
+
+		/* Check if image is smaller than adjusted box. */
+		zoom = MAXIMUM(1, (float)adj_width / pix_width);
+		zoom = MAXIMUM(zoom, (float)adj_height / pix_height);
+
+		/* Zoom in only as much as necessary. */
+		adj_width = MAXIMUM(1, adj_width / zoom);
+		adj_height = MAXIMUM(1, adj_height / zoom);
 
 		/*
 		 * Find proper offset and avoid overlapping bounding box.
