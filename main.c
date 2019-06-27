@@ -218,7 +218,7 @@ transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 
 	if (mode == MODE_FOCUS) {
 		int adj_x, adj_y, adj_width, adj_height;
-		float height_zoom, width_zoom, zoom;
+		float zoom;
 
 		adj_width = src_width;
 		adj_height = src_height;
@@ -231,24 +231,15 @@ transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 		adj_width = xcb_width * zoom;
 		adj_height = xcb_height * zoom;
 
-		/*
-		 * Check if image is smaller than adjusted box.
-		 *
-		 * The adjusted box must fully contain the image, i.e.
-		 * adjusted width AND height must be larger than width
-		 * and height of the input image. Otherwise the trim box
-		 * will be zoomed into and the constraint is violated.
-		 */
-		width_zoom = (float)adj_width / pix_width;
-		height_zoom = (float)adj_height / pix_height;
-		if (width_zoom > 1 && height_zoom > 1)
-			zoom = MAXIMUM(width_zoom, height_zoom);
-		else
-			zoom = 1;
+		/* Check if trim box is smaller than screen. */
+		if (src_width < xcb_width && src_height < xcb_height) {
+			zoom = MAXIMUM(1, (float)adj_width / pix_width);
+			zoom = MAXIMUM(zoom, (float)adj_height / pix_height);
 
-		/* Zoom in only as much as necessary. */
-		adj_width = MAXIMUM(1, adj_width / zoom);
-		adj_height = MAXIMUM(1, adj_height / zoom);
+			/* Zoom in but not more than necessary. */
+			adj_width = MAXIMUM(1, adj_width / zoom);
+			adj_height = MAXIMUM(1, adj_height / zoom);
+		}
 
 		/*
 		 * Find proper offset and avoid overlapping bounding box.
