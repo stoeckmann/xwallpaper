@@ -34,8 +34,7 @@
 #define ATOM_ESETROOT "ESETROOT_PMAP_ID"
 #define ATOM_XSETROOT "_XROOTPMAP_ID"
 
-#define MINIMUM(x, y) (x) < (y) ? (x) : (y)
-#define MAXIMUM(x, y) (x) > (y) ? (x) : (y)
+#define MAXIMUM(x, y) ((x) > (y) ? (x) : (y))
 
 static uint32_t
 get_max_rows_per_request(xcb_connection_t *c, xcb_image_t *image, uint32_t n)
@@ -190,8 +189,8 @@ transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 	pixman_transform_t transform;
 	pixman_filter_t filter;
 	int mode;
-	int pix_width, pix_height;
-	int src_width, src_height;
+	uint16_t pix_width, pix_height;
+	uint16_t src_width, src_height;
 	uint16_t xcb_width, xcb_height;
 	float w_scale, h_scale, scale;
 	float translate_x, translate_y;
@@ -217,48 +216,114 @@ transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 	}
 
 	if (mode == MODE_FOCUS) {
-		int adj_x, adj_y, adj_width, adj_height;
-		float zoom;
+		float target_x, target_y;
+		uint16_t target_width, target_height;
+		float ratio;
 
-		adj_width = src_width;
-		adj_height = src_height;
+		debug("focus on trim box %hux%hu%+.0f%+.0f of %hux%hu for "
+		    "output %hux%hu\n", src_width, src_height, off_x, off_y,
+		    pix_width, pix_height, xcb_width, xcb_height);
 
-		/* Check if image must be zoomed out to fit trim on screen. */
-		zoom = MAXIMUM(1, (float)src_width / xcb_width);
-		zoom = MAXIMUM(zoom, (float)src_height / xcb_height);
-
-		/* Get in more pixels to fill output completely. */
-		adj_width = xcb_width * zoom;
-		adj_height = xcb_height * zoom;
-
-		/* Check if trim box is smaller than screen. */
-		if (src_width < xcb_width && src_height < xcb_height) {
-			zoom = MAXIMUM(1, (float)adj_width / pix_width);
-			zoom = MAXIMUM(zoom, (float)adj_height / pix_height);
-
-			/* Zoom in but not more than necessary. */
-			adj_width = MAXIMUM(1, adj_width / zoom);
-			adj_height = MAXIMUM(1, adj_height / zoom);
-		}
+		ratio = (float)xcb_width / xcb_height;
+		debug("output ratio is %f\n", ratio);
 
 		/*
-		 * Find proper offset and avoid overlapping bounding box.
+		 * Calculate minimum box to use.
 		 *
-		 * If the image file lacks enough pixels around the trim box,
-		 * then black pixels on output are unfortunate but inevitable.
-		 * It is much more important to keep the constraint of having
-		 * all pixels within the trim box to be on screen.
+		 * The minimum box depends solely on the input image dimensions
+		 * and will be used if the specified trim box fully fits in it.
+		 *
+		 * This guarantees that we never zoom in further than needed
+		 * even on very small trim boxes.
 		 */
-		adj_x = MAXIMUM(0, off_x - (adj_width - src_width) / 2);
-		adj_y = MAXIMUM(0, off_y - (adj_height - src_height) / 2);
-		adj_width = MINIMUM(adj_width, pix_width - adj_x);
-		adj_height = MINIMUM(adj_height, pix_height - adj_y);
+		if (pix_width > xcb_width && pix_height > xcb_height) {
+			/*
+			 * If the input image is larger than output, then use
+			 * output dimensions. No zooming in occurs and leads
+			 * to best quality.
+			 */
+			target_width = xcb_width;
+			target_height = xcb_height;
+		} else {
+			/*
+			 * At least one dimension of input image is smaller than
+			 * the corresponding output dimension. Zooming in is
+			 * required to prevent black borders.
+			 */
+			float rx, ry;
+
+			rx = (float)xcb_width / pix_width;
+			ry = (float)xcb_height / pix_height;
+			debug("minimum box check: rx = %f, ry = %f\n", rx, ry);
+
+			/* Zoom in and keep aspect ratio of output. */
+			if (rx < ry) {
+				target_width = MAXIMUM(1, pix_height * ratio);
+				target_height = pix_height;
+			} else {
+				target_width = pix_width;
+				target_height = MAXIMUM(1, pix_width / ratio);
+			}
+		}
+		debug("minimum box dimensions are %hux%hu\n", target_width,
+		    target_height);
+
+		/*
+		 * If trim box fits into minimum box, then use minimum box.
+		 * Otherwise it means that box must be zoomed out to cover the
+		 * whole trim box. Black borders can occur due to this.
+		 */
+		if (src_width > target_width || src_height > target_height) {
+			float rx, ry;
+
+			rx = (float)src_width / target_width;
+			ry = (float)src_height / target_height;
+			debug("target box check: rx = %f, ry = %f\n", rx, ry);
+
+			/* Zoom out and keep aspect ratio of output. */
+			if (rx < ry) {
+				target_width = MAXIMUM(1, src_height * ratio);
+				target_height = src_height;
+			} else {
+				target_width = src_width;
+				target_height = MAXIMUM(1, src_width / ratio);
+			}
+		}
+		debug("target box dimensions are %hux%hu\n", target_width,
+		    target_height);
+
+		/*
+		 * Find proper offsets.
+		 *
+		 * If the image file lacks enough pixels around current box,
+		 * then black borders on output are unfortunate but inevitable.
+		 * It is much more important to keep the constraint of having
+		 * all pixels within the trim box on output.
+		 */
+		target_x = MAXIMUM(0, off_x - (target_width - src_width) / 2);
+		target_y = MAXIMUM(0, off_y - (target_height - src_height) / 2);
+
+		if (target_width > pix_width - target_x) {
+			if (target_width > pix_width)
+				target_x = (pix_width - target_width) / 2;
+			else
+				target_x = pix_width - target_width;
+		}
+		if (target_height > pix_height - target_y) {
+			if (target_height > pix_height)
+				target_y = (pix_height - target_height) / 2;
+			else
+				target_y = pix_height - target_height;
+		}
 
 		mode = MODE_MAXIMIZE;
-		off_x = adj_x;
-		off_y = adj_y;
-		src_width = adj_width;
-		src_height = adj_height;
+		off_x = target_x;
+		off_y = target_y;
+		src_width = target_width;
+		src_height = target_height;
+
+		debug("final source box is %hux%hu%+.0f%+.0f\n", src_width,
+		    src_height, off_x, off_y);
 	}
 
 	w_scale = (float)src_width / xcb_width;
