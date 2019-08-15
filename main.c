@@ -644,7 +644,7 @@ main(int argc, char *argv[])
 	xcb_screen_iterator_t it;
 	int snum;
 #ifdef HAVE_PLEDGE
-	if (pledge("dns inet proc rpath stdio unix unveil", NULL) == -1)
+	if (pledge("dns inet proc rpath stdio unix", NULL) == -1)
 		err(1, "pledge");
 #endif /* HAVE_PLEDGE */
 #ifdef WITH_SECCOMP
@@ -660,8 +660,6 @@ main(int argc, char *argv[])
 	if (xcb_connection_has_error(c))
 		errx(1, "failed to connect to X server");
 #ifdef HAVE_PLEDGE
-	if (unveil(NULL, NULL) == -1)
-		err(1, "unveil");
 	if (pledge("stdio", NULL) == -1)
 		err(1, "pledge");
 #endif /* HAVE_PLEDGE */
