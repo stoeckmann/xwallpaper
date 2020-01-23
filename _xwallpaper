@@ -7,7 +7,7 @@ _arguments \
     '--daemon[enable daemon mode]' \
     '--debug[enable debug mode]' \
     '--no-randr[disable randr support]' \
-    '--trim[trim box]:widthxheight+x+y' \
+    '*--trim[trim box]:widthxheight+x+y' \
     '*--screen[X screen number]:X screen number' \
     '*--output[output device]:output device:->outputs' \
     '*--center[center input file on the screen]:filename:_files' \
