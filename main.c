@@ -182,12 +182,12 @@ tile(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 }
 
 static void
-transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
+transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option,
+    pixman_filter_t filter)
 {
 	pixman_image_t *pixman_image;
 	pixman_f_transform_t ftransform;
 	pixman_transform_t transform;
-	pixman_filter_t filter;
 	int mode;
 	uint16_t pix_width, pix_height;
 	uint16_t src_width, src_height;
@@ -328,7 +328,6 @@ transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 
 	w_scale = (float)src_width / xcb_width;
 	h_scale = (float)src_height / xcb_height;
-	filter = PIXMAN_FILTER_BEST;
 
 	switch (mode) {
 	case MODE_CENTER:
@@ -374,6 +373,9 @@ put_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
 	uint8_t *data;
 	uint32_t h, max_height, row_len, sub_height;
 	xcb_image_t *sub;
+	uint8_t depth;
+
+	depth = screen->root_depth == 16 ? 16 : 32;
 
 	debug("xcb image (%dx%d) to %s (%dx%d+%d+%d)\n",
 	    xcb_image->width, xcb_image->height,
@@ -389,7 +391,7 @@ put_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
 
 		sub_height = max_height;
 		sub = xcb_image_create_native(c, xcb_image->width, sub_height,
-		    XCB_IMAGE_FORMAT_Z_PIXMAP, 32, NULL, ~0, NULL);
+		    XCB_IMAGE_FORMAT_Z_PIXMAP, depth, NULL, ~0, NULL);
 		if (sub == NULL)
 			errx(1, "failed to create xcb image");
 	} else {
@@ -407,7 +409,7 @@ put_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
 			xcb_image_destroy(sub);
 			sub = xcb_image_create_native(c,
 			    xcb_image->width, sub_height,
-			    XCB_IMAGE_FORMAT_Z_PIXMAP, 32, NULL, ~0, NULL);
+			    XCB_IMAGE_FORMAT_Z_PIXMAP, depth, NULL, ~0, NULL);
 			if (sub == NULL)
 				errx(1, "failed to create xcb image");
 		}
@@ -437,12 +439,31 @@ process_output(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
 	size_t len, stride;
 	xcb_image_t *xcb_image;
 	pixman_image_t *pixman_image;
+	pixman_format_code_t pixman_format;
+	pixman_filter_t filter;
+	uint8_t depth;
 
-	SAFE_MUL(stride, output->width, sizeof(*pixels));
+	depth = screen->root_depth == 16 ? 16 : 32;
+	SAFE_MUL(stride, output->width, depth / 8);
 	SAFE_MUL(len, output->height, stride);
 	pixels = xmalloc(len);
 
-	pixman_image = pixman_image_create_bits(PIXMAN_a8r8g8b8, output->width,
+	switch (screen->root_depth) {
+	case 16:
+		pixman_format = PIXMAN_r5g6b5;
+		filter = PIXMAN_FILTER_BEST;
+		break;
+	case 30:
+		pixman_format = PIXMAN_x2r10g10b10;
+		filter = PIXMAN_FILTER_NEAREST;
+		break;
+	default:
+		pixman_format = PIXMAN_x8r8g8b8;
+		filter = PIXMAN_FILTER_BEST;
+		break;
+	}
+
+	pixman_image = pixman_image_create_bits(pixman_format, output->width,
 	    output->height, pixels, stride);
 	if (pixman_image == NULL)
 		errx(1, "failed to create temporary pixman image");
@@ -450,10 +471,10 @@ process_output(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
 	if (option->mode == MODE_TILE)
 		tile(pixman_image, output, option);
 	else
-		transform(pixman_image, output, option);
+		transform(pixman_image, output, option, filter);
 
 	xcb_image = xcb_image_create_native(c, output->width, output->height,
-	    XCB_IMAGE_FORMAT_Z_PIXMAP, 32, NULL, len, (uint8_t *) pixels);
+	    XCB_IMAGE_FORMAT_Z_PIXMAP, depth, NULL, len, (uint8_t *) pixels);
 	if (xcb_image == NULL)
 		errx(1, "failed to create xcb image");
 
