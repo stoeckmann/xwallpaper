@@ -78,6 +78,9 @@ load_png(FILE *fp)
 	height = png_get_image_height(png_ptr, info_ptr);
 	type = png_get_color_type(png_ptr, info_ptr);
 	depth = png_get_bit_depth(png_ptr, info_ptr);
+#if defined(PNG_READ_INTERLACING_SUPPORTED)
+	png_set_interlace_handling(png_ptr);
+#endif /* PNG_READ_INTERLACING_SUPPORTED */
 
 	switch (type) {
 	case PNG_COLOR_TYPE_GRAY:
