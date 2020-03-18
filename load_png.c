@@ -94,6 +94,8 @@ load_png(FILE *fp)
 			png_set_tRNS_to_alpha(png_ptr);
 		break;
 	default:
+		if (depth == 16)
+			png_set_strip_16(png_ptr);
 		break;
 	}
 	if (!(type & PNG_COLOR_MASK_ALPHA))
