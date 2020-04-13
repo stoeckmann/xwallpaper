@@ -640,10 +640,6 @@ process_event(wp_config_t *config, xcb_connection_t *c,
 	it = xcb_setup_roots_iterator(xcb_get_setup(c));
 	for (snum = 0; it.rem; snum++, xcb_screen_next(&it)) {
 		if (it.data->root == randr_event->root) {
-			/* only redraw if really necessary */
-			if (it.data->width_in_pixels == randr_event->width &&
-			    it.data->height_in_pixels == randr_event->height)
-				break;
 			it.data->width_in_pixels = randr_event->width;
 			it.data->height_in_pixels = randr_event->height;
 			process_screen(c, it.data, snum, config->options);
