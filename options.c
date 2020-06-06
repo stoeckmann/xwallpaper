@@ -95,7 +95,7 @@ init_buffers(wp_config_t *config)
 	for (i = 0; i < config->count; i++) {
 		struct stat st;
 
-		if ((buffer.fp = fopen(config->options[i].filename, "r"))
+		if ((buffer.fp = fopen(config->options[i].filename, "rb"))
 		    == NULL)
 			err(1, "open '%s' failed", config->options[i].filename);
 		if (fstat(fileno(buffer.fp), &st))
