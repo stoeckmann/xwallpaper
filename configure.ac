@@ -84,6 +84,17 @@ AC_ARG_WITH([jpeg],
 AC_MSG_RESULT($jpeg_support)
 if test "$jpeg_support" != no ; then
   PKG_CHECK_MODULES(JPEG, libjpeg >= 1.5, [jpeg_ok="yes"], [jpeg_ok="no"])
+  # Ubuntu Bionic Beaver fix, can be removed after April 2023.
+  # See issue #25 for more details. TLDR: The relevant .pc file is broken
+  if test "$jpeg_ok" = no ; then
+    AC_CHECK_HEADER(jpeglib.h,
+      AC_CHECK_LIB(jpeg, jpeg_std_error,
+        [jpeg_ok="yes"], [jpeg_ok="no"]))
+    if test "$jpeg_ok" = yes ; then
+      JPEG_LIB="-ljpeg"
+      AC_SUBST(JPEG_LIB)
+    fi
+  fi
 else
   jpeg_ok="no"
 fi
