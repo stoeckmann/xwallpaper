@@ -91,8 +91,7 @@ if test "$jpeg_support" != no ; then
       AC_CHECK_LIB(jpeg, jpeg_std_error,
         [jpeg_ok="yes"], [jpeg_ok="no"]))
     if test "$jpeg_ok" = yes ; then
-      JPEG_LIB="-ljpeg"
-      AC_SUBST(JPEG_LIB)
+      LIBS="-ljpeg $LIBS"
     fi
   fi
 else
