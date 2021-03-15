@@ -11,6 +11,7 @@ _arguments \
     '*--screen[X screen number]:X screen number' \
     '*--output[output device]:output device:->outputs' \
     '*--center[center input file on the screen]:filename:_files' \
+    '*--focus[guarantee trim box to be visible on output]:filename:_files' \
     '*--maximize[maximize input file on the screen without cropping]:filename:_files' \
     '*--stretch[stretch input file to fill entire screen]:filename:_files' \
     '*--zoom[maximize input file on the screen with cropping]:filename:_files' \
