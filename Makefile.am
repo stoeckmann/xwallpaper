@@ -49,4 +49,12 @@ else
 EXTRA_DIST += load_xpm.c
 endif
 
+if BUILD_WEBP
+xwallpaper_SOURCES += load_webp.c
+xwallpaper_CPPFLAGS += @WEBP_CFLAGS@
+xwallpaper_LDADD += @WEBP_LIBS@
+else
+EXTRA_DIST += load_webp.c
+endif
+
 AM_CFLAGS = $(CWARNFLAGS)

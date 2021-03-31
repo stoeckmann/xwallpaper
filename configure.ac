@@ -150,6 +150,30 @@ AS_IF([test "$xpm_ok" = yes],
 )
 AM_CONDITIONAL(BUILD_XPM, [test "$xpm_ok" = yes])
 
+# Check if WebP support is requested
+AC_MSG_CHECKING(whether WEBP support is requested)
+AC_ARG_WITH([webp],
+  [AS_HELP_STRING([--without-webp], [disable WEBP support])],
+  [
+   if test "$withval" = no ; then
+     webp_support=no
+   else
+     webp_support=yes
+   fi
+  ],
+  [ webp_support=auto ]
+)
+AC_MSG_RESULT($webp_support)
+if test "$webp_support" != no ; then
+  PKG_CHECK_MODULES(WEBP, libwebp >= 1.1, [webp_ok="yes"], [webp_ok="no"])
+else
+  webp_ok="no"
+fi
+AS_IF([test "$webp_ok" = yes],
+  [AC_DEFINE(WITH_WEBP,[1],[Define to 1 if you want WEBP support.])],[]
+)
+AM_CONDITIONAL(BUILD_WEBP, [test "$webp_ok" = yes])
+
 AC_ARG_WITH([zshcompletiondir],
  AS_HELP_STRING([--with-zshcompletiondir=DIR], [Zsh completions directory]),
  [], [with_zshcompletiondir=${datadir}/zsh/site-functions])

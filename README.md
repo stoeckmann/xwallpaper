@@ -1,7 +1,7 @@
 # xwallpaper
 
 The xwallpaper utility allows you to set image files as your X wallpaper.
-JPEG, PNG, and XPM file formats are supported, all of them being configurable
+JPEG, PNG, XPM and WebP file formats are supported, all of them being configurable
 and therefore no fixed dependencies.
 
 The wallpaper is also advertised to programs which support semi-transparent
@@ -30,8 +30,8 @@ Building and installing is as simple as:
     make
     make install
 
-To support all file formats, your system needs libjpeg-turbo, libpng, and
-libXpm. If one of the libraries is not found, the specific file format will
+To support all file formats, your system needs libjpeg-turbo, libpng,
+libXpm and libwebp. If one of the libraries is not found, the specific file format will
 not be supported. Also, if you compile for OpenBSD, the system call pledge
 is automatically used. On Linux systems, libseccomp is used if available to
 filter system calls.
