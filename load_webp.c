@@ -33,7 +33,6 @@ load_webp(FILE *fp)
   uint32_t *pixel, *pixels;
 	size_t data_size;
 	unsigned int width, height, ok, len;
-  WebPBitstreamFeatures feats;
 
   fseek(fp, 0, SEEK_END);
   data_size = ftell(fp);
