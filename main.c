@@ -572,7 +572,9 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 	wp_option_t *opt, *options;
 	uint16_t width, height;
 	xcb_rectangle_t rectangle;
+	int reuse;
 
+	reuse = 0;
 	options = config->options;
 
 	/* let X perform non-randr tiling if requested */
@@ -604,6 +606,8 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 			    geom_reply->height != height ||
 			    geom_reply->depth != screen->root_depth)
 				pixmap = XCB_BACK_PIXMAP_NONE;
+			else
+				reuse = 1;
 			free(geom_reply);
 		}
 	} else
@@ -663,11 +667,14 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 			xcb_free_pixmap(c, pixmap);
 		}
 	}
-	if (config->target & TARGET_ATOMS)
+	if (config->target & TARGET_ATOMS) {
 		process_atoms(c, screen, &result, NULL);
-	else
+		if (!reuse)
+			xcb_kill_client(c, XCB_KILL_ALL_TEMPORARY);
+		xcb_set_close_down_mode(c, XCB_CLOSE_DOWN_RETAIN_TEMPORARY);
+	} else
 		xcb_free_pixmap(c, pixmap);
-	xcb_clear_area(c, 0, screen->root, 0, 0, 0, 0);
+	xcb_request_check(c, xcb_clear_area(c, 0, screen->root, 0, 0, 0, 0));
 
 	if (outputs != &tile_output)
 		free_outputs(outputs);
@@ -757,14 +764,6 @@ main(int argc, char *argv[])
 
 	for (snum = 0; it.rem; snum++, xcb_screen_next(&it))
 		process_screen(c, it.data, snum, config);
-
-	xcb_request_check(c, xcb_kill_client(c, XCB_KILL_ALL_TEMPORARY));
-	if (config->target & TARGET_ATOMS) {
-		if (config->options != NULL) {
-			xcb_request_check(c, xcb_set_close_down_mode(c,
-			    XCB_CLOSE_DOWN_RETAIN_TEMPORARY));
-		}
-	}
 
 	if (xcb_connection_has_error(c))
 		warnx("error encountered while setting wallpaper");
