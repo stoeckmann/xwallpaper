@@ -271,6 +271,9 @@ parse_config(char **argv)
 		last.output = "all";
 	add_option(config, last);
 
+	if (!(config->target & TARGET_ATOMS))
+		config->source = 0;
+
 	if (config->count == 0 && config->source != 0)
 		return NULL;
 
