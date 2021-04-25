@@ -4,9 +4,12 @@ local curcontext="$curcontext" state line expl
 typeset -A opt_args
 
 _arguments \
+    '--clear[set background to black]' \
     '--daemon[enable daemon mode]' \
     '--debug[enable debug mode]' \
+    '--no-atoms[no update of pseudo transparency atoms]' \
     '--no-randr[disable randr support]' \
+    '--no-root[no update of root window background]' \
     '*--trim[trim box]:widthxheight+x+y' \
     '*--screen[X screen number]:X screen number' \
     '*--output[output device]:output device:->outputs' \

@@ -93,34 +93,34 @@ static void
 load_pixman_images(xcb_connection_t *c, xcb_screen_t *screen,
     wp_option_t *options)
 {
-	wp_option_t *option;
+	wp_option_t *opt;
 	pixman_image_t *img;
 
-	for (option = options; option->filename != NULL; option++)
-		if (option->buffer->pixman_image == NULL) {
+	for (opt = options; opt != NULL && opt->filename != NULL; opt++)
+		if (opt->buffer->pixman_image == NULL) {
 			int height, width;
 
-			debug("loading %s\n", option->filename);
-			img = load_pixman_image(c, screen, option->buffer->fp);
+			debug("loading %s\n", opt->filename);
+			img = load_pixman_image(c, screen, opt->buffer->fp);
 			if (img == NULL)
-				errx(1, "failed to parse %s", option->filename);
-			option->buffer->pixman_image = img;
-			fclose(option->buffer->fp);
+				errx(1, "failed to parse %s", opt->filename);
+			opt->buffer->pixman_image = img;
+			fclose(opt->buffer->fp);
 
 			height = pixman_image_get_height(img);
 			width = pixman_image_get_width(img);
 
 			if (height > UINT16_MAX || width > UINT16_MAX)
 				errx(1, "%s has illegal dimensions",
-				    option->filename);
+				    opt->filename);
 
-			if (option->trim != NULL) {
-				wp_box_t *trim = option->trim;
+			if (opt->trim != NULL) {
+				wp_box_t *trim = opt->trim;
 
 				if (height < trim->y_off + trim->height ||
 				    width < trim->x_off + trim->width)
 					errx(1, "%s is smaller than trim box",
-					    option->filename);
+					    opt->filename);
 			}
 		}
 }
@@ -486,7 +486,8 @@ process_output(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
 }
 
 static void
-update_atoms(xcb_connection_t *c, xcb_screen_t *screen, xcb_pixmap_t pixmap)
+process_atoms(xcb_connection_t *c, xcb_screen_t *screen, xcb_pixmap_t *pixmap,
+    xcb_pixmap_t *old_pixmap)
 {
 	static xcb_void_cookie_t (*delete)(xcb_connection_t *, uint32_t) =
 	    xcb_kill_client;
@@ -524,19 +525,36 @@ update_atoms(xcb_connection_t *c, xcb_screen_t *screen, xcb_pixmap_t pixmap)
 			old[i] = NULL;
 	}
 
-	if (old[0] != NULL)
+	if (old[0] != NULL && pixmap != NULL && *old[0] != *pixmap)
 		delete(c, *old[0]);
 	if (old[1] != NULL && (old[0] == NULL || *old[0] != *old[1]))
 		delete(c, *old[1]);
-	delete = xcb_free_pixmap;
+	if (pixmap != NULL)
+		delete = xcb_free_pixmap;
+
+	if (old_pixmap != NULL) {
+		if (old[0] != NULL && old[1] != NULL && *old[0] == *old[1])
+			*old_pixmap = *old[0];
+		else
+			*old_pixmap = XCB_BACK_PIXMAP_NONE;
+	}
 
 	for (i = 0; i < 2; i++) {
-		if (atom_reply[i] != NULL)
-			xcb_change_property(c, XCB_PROP_MODE_REPLACE,
-			    screen->root, atom_reply[i]->atom, XCB_ATOM_PIXMAP,
-			    32, 1, &pixmap);
-		else
-			warnx("failed to update atoms");
+		if (pixmap != NULL) {
+			if (atom_reply[i] != NULL) {
+				if (*pixmap == XCB_BACK_PIXMAP_NONE)
+					xcb_delete_property(c,
+					    screen->root,
+					    atom_reply[i]->atom);
+				else
+					xcb_change_property(c,
+					    XCB_PROP_MODE_REPLACE,
+					    screen->root,
+					    atom_reply[i]->atom,
+					    XCB_ATOM_PIXMAP, 32, 1, pixmap);
+			} else
+				warnx("failed to update atoms");
+		}
 		free(property_reply[i]);
 		free(atom_reply[i]);
 	}
@@ -544,18 +562,22 @@ update_atoms(xcb_connection_t *c, xcb_screen_t *screen, xcb_pixmap_t pixmap)
 
 static void
 process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
-    wp_option_t *options)
+    wp_config_t *config)
 {
-	xcb_pixmap_t pixmap;
+	xcb_pixmap_t pixmap, result;
 	xcb_gcontext_t gc;
+	xcb_get_geometry_cookie_t geom_cookie;
+	xcb_get_geometry_reply_t *geom_reply;
 	wp_output_t *outputs, tile_output;
-	wp_option_t *option;
+	wp_option_t *opt, *options;
 	uint16_t width, height;
 	xcb_rectangle_t rectangle;
 
+	options = config->options;
+
 	/* let X perform non-randr tiling if requested */
-	if (options[0].mode == MODE_TILE && options[0].output == NULL &&
-	    options[1].filename == NULL) {
+	if (options != NULL && options[0].mode == MODE_TILE &&
+	    options[0].output == NULL && options[1].filename == NULL) {
 		pixman_image_t *pixman_image = options->buffer->pixman_image;
 
 		/* fake an output that fits the picture */
@@ -573,42 +595,78 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 		outputs = get_outputs(c, screen);
 	}
 
-	debug("creating pixmap (%dx%d)\n", width, height);
-	pixmap = xcb_generate_id(c);
-	xcb_create_pixmap(c, screen->root_depth, pixmap, screen->root, width,
-	    height);
-	gc = xcb_generate_id(c);
-	xcb_create_gc(c, gc, pixmap, 0, NULL);
-	rectangle.x = 0;
-	rectangle.y = 0;
-	rectangle.width = width;
-	rectangle.height = height;
-	xcb_poly_fill_rectangle(c, pixmap, gc, 1, &rectangle);
+	if (config->source == SOURCE_ATOMS) {
+		process_atoms(c, screen, NULL, &pixmap);
+		if (pixmap != XCB_BACK_PIXMAP_NONE) {
+			geom_cookie = xcb_get_geometry(c, pixmap);
+			geom_reply = xcb_get_geometry_reply(c, geom_cookie, NULL);
+			if (geom_reply == NULL || geom_reply->width != width ||
+			    geom_reply->height != height ||
+			    geom_reply->depth != screen->root_depth)
+				pixmap = XCB_BACK_PIXMAP_NONE;
+			free(geom_reply);
+		}
+	} else
+		pixmap = XCB_BACK_PIXMAP_NONE;
 
-	for (option = options; option->filename != NULL; option++) {
+	if (pixmap == XCB_BACK_PIXMAP_NONE) {
+		debug("creating pixmap (%dx%d)\n", width, height);
+		pixmap = xcb_generate_id(c);
+		xcb_create_pixmap(c, screen->root_depth, pixmap, screen->root,
+		    width, height);
+		gc = xcb_generate_id(c);
+		xcb_create_gc(c, gc, pixmap, 0, NULL);
+		rectangle.x = 0;
+		rectangle.y = 0;
+		rectangle.width = width;
+		rectangle.height = height;
+		xcb_poly_fill_rectangle(c, pixmap, gc, 1, &rectangle);
+	} else {
+		debug("reusing atom pixmap (%dx%d)\n", width, height);
+		gc = xcb_generate_id(c);
+		xcb_create_gc(c, gc, pixmap, 0, NULL);
+	}
+
+	for (opt = options; opt != NULL && opt->filename != NULL; opt++) {
 		wp_output_t *output;
 
 		/* ignore options which are not relevant for this screen */
-		if (option->screen != -1 && option->screen != snum)
+		if (opt->screen != -1 && opt->screen != snum)
 			continue;
 
-		if (option->output != NULL &&
-		    strcmp(option->output, "all") == 0)
+		if (opt->output != NULL &&
+		    strcmp(opt->output, "all") == 0)
 			for (output = outputs; output->name != NULL; output++)
-				process_output(c, screen, output, option,
+				process_output(c, screen, output, opt,
 				    pixmap, gc);
 		else {
-			output = get_output(outputs, option->output);
+			output = get_output(outputs, opt->output);
 			if (output != NULL)
-				process_output(c, screen, output, option,
+				process_output(c, screen, output, opt,
 				    pixmap, gc);
 		}
 	}
 
+	if (options == NULL)
+		result = XCB_BACK_PIXMAP_NONE;
+	else
+		result = pixmap;
+
 	xcb_free_gc(c, gc);
-	xcb_change_window_attributes(c, screen->root, XCB_CW_BACK_PIXMAP,
-	    &pixmap);
-	update_atoms(c, screen, pixmap);
+	if (config->target & TARGET_ROOT) {
+		/* always set a pixmap, even before clearing */
+		xcb_change_window_attributes(c, screen->root,
+		    XCB_CW_BACK_PIXMAP, &pixmap);
+		if (result == XCB_BACK_PIXMAP_NONE) {
+			xcb_change_window_attributes(c, screen->root,
+			    XCB_CW_BACK_PIXMAP, &result);
+			xcb_free_pixmap(c, pixmap);
+		}
+	}
+	if (config->target & TARGET_ATOMS)
+		process_atoms(c, screen, &result, NULL);
+	else
+		xcb_free_pixmap(c, pixmap);
 	xcb_clear_area(c, 0, screen->root, 0, 0, 0, 0);
 
 	if (outputs != &tile_output)
@@ -619,10 +677,11 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-"usage: xwallpaper [--screen <screen>] [--daemon] [--debug] [--no-randr]\n"
-"  [--trim widthxheight[+x+y]] [--output <output>] [--center <file>]\n"
-"  [--focus <file>] [--maximize <file>] [--stretch <file>] [--tile <file>]\n"
-"  [--zoom <file>] [--version]\n");
+"usage: xwallpaper [--screen <screen>] [--clear] [--daemon] [--debug]\n"
+"  [--no-atoms] [--no-randr] [--no-root] [--trim widthxheight[+x+y]]\n"
+"  [--output <output>] [--center <file>] [--focus <file>]\n"
+"  [--maximize <file>] [--stretch <file>] [--tile <file>] [--zoom <file>]\n"
+"  [--version]\n");
 	exit(1);
 }
 
@@ -642,7 +701,7 @@ process_event(wp_config_t *config, xcb_connection_t *c,
 		if (it.data->root == randr_event->root) {
 			it.data->width_in_pixels = randr_event->width;
 			it.data->height_in_pixels = randr_event->height;
-			process_screen(c, it.data, snum, config->options);
+			process_screen(c, it.data, snum, config);
 		}
 	}
 	xcb_request_check(c, xcb_set_close_down_mode(c,
@@ -697,11 +756,15 @@ main(int argc, char *argv[])
 	load_pixman_images(c, it.data, config->options);
 
 	for (snum = 0; it.rem; snum++, xcb_screen_next(&it))
-		process_screen(c, it.data, snum, config->options);
+		process_screen(c, it.data, snum, config);
 
-	xcb_kill_client(c, XCB_KILL_ALL_TEMPORARY);
-	xcb_request_check(c, xcb_set_close_down_mode(c,
-	    XCB_CLOSE_DOWN_RETAIN_TEMPORARY));
+	xcb_request_check(c, xcb_kill_client(c, XCB_KILL_ALL_TEMPORARY));
+	if (config->target & TARGET_ATOMS) {
+		if (config->options != NULL) {
+			xcb_request_check(c, xcb_set_close_down_mode(c,
+			    XCB_CLOSE_DOWN_RETAIN_TEMPORARY));
+		}
+	}
 
 	if (xcb_connection_has_error(c))
 		warnx("error encountered while setting wallpaper");
@@ -710,7 +773,8 @@ main(int argc, char *argv[])
 	if (config->daemon) {
 		it = xcb_setup_roots_iterator(xcb_get_setup(c));
 		for (snum = 0; it.rem; snum++, xcb_screen_next(&it))
-			xcb_request_check(c, xcb_randr_select_input(c, it.data->root,
+			xcb_request_check(c, xcb_randr_select_input(c,
+			    it.data->root,
 			    XCB_RANDR_NOTIFY_MASK_SCREEN_CHANGE));
 
 		while ((event = xcb_wait_for_event(c)) != NULL)

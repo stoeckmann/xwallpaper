@@ -33,6 +33,11 @@
 #define MODE_TILE	5
 #define MODE_ZOOM	6
 
+#define SOURCE_ATOMS	1
+
+#define TARGET_ATOMS	1
+#define TARGET_ROOT	2
+
 #define SAFE_MUL(res, x, y) do {					 \
 	if ((y) != 0 && SIZE_MAX / (y) < (x))				 \
 		errx(1, "memory allocation would exceed system limits"); \
@@ -71,6 +76,8 @@ typedef struct wp_config {
 	wp_option_t	*options;
 	size_t		 count;
 	int		 daemon;
+	int		 source;
+	int		 target;
 } wp_config_t;
 
 typedef struct wp_output {

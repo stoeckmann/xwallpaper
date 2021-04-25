@@ -20,9 +20,12 @@
 .Sh SYNOPSIS
 .Nm xwallpaper
 .Op Fl Fl screen Ar screen
+.Op Fl Fl clear
 .Op Fl Fl daemon
 .Op Fl Fl debug
+.Op Fl Fl no-atoms
 .Op Fl Fl no-randr
+.Op Fl Fl no-root
 .Op Fl Fl trim Ar widthxheight[+x+y]
 .Op Fl Fl output Ar output
 .Op Fl Fl center Ar file
@@ -49,6 +52,12 @@ Centers the input file on the output.
 If the dimensions of the input file are smaller than the output dimensions,
 the remaining area is filled black.
 If the input file dimensions are too large, parts of the image will be cropped.
+.It Fl Fl clear
+Initializes screen with a black background. Without this option the current
+content of pseudo transparency atoms is retrieved and used as foundation.
+If atom contents do not exist or cannot be reused, e.g. due to resolution
+change of one of the outputs, then an initially black background is used
+as well.
 .It Fl Fl daemon
 Keeps
 .Nm xwallpaper
@@ -76,9 +85,20 @@ depending on the dimensions of the input file and the output.
 This option guarantees that the whole image is seen.
 If the ratio does not fit the output, the remaining area is filled black.
 The image itself will be centered on output.
+.It Fl Fl no-atoms
+Atoms which are used for pseudo transparency are not updated. Mutually exclusive
+with
+.Fl Fl Fl no-root
+option.
 .It Fl Fl no-randr
 Ignores individual outputs and uses the whole output instead.
 This is the area that spans across all different outputs (monitors).
+.It Fl Fl no-root
+The background of the root window is not updated. Use this option if you want
+to update only atoms used for pseudo transparency. It is therefore mutually
+exclusive with
+.Fl Fl no-atoms
+option.
 .It Fl Fl trim Ar widthxheight+x+y
 Specifies area of interest in source file. If output mode tries to output more
 pixels than specified with trim box, then the adjacent pixels around the
@@ -93,6 +113,7 @@ If no output is specified, all outputs will be modified individually.
 The special keyword
 .Cm all
 will repeat subsequent actions on all displays.
+If the output could not be found, its associated actions are ignored.
 .It Fl Fl screen Ar screen
 Specifies a screen by its screen number.
 Normally all screens of an X display are processed.
@@ -100,7 +121,6 @@ Please note that a screen is not a single monitor.
 See
 .Fl Fl output
 for such a use case above.
-If the output could not be found, nothing happens.
 .It Fl Fl stretch Ar file
 Stretches input file to fully cover the output.
 If the aspect ratio of the input file does not match the output,

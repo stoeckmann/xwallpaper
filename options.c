@@ -85,6 +85,9 @@ init_buffers(wp_config_t *config)
 	size_t buffers_count, i, len;
 	size_t *refs;
 
+	if (config->count == 0)
+		return;
+
 	SAFE_MUL(len, config->count, sizeof(*refs));
 	refs = xmalloc(len);
 
@@ -183,6 +186,8 @@ parse_config(char **argv)
 	config->options = NULL;
 	config->count = 0;
 	config->daemon = 0;
+	config->source = SOURCE_ATOMS;
+	config->target = TARGET_ATOMS | TARGET_ROOT;
 
 	memset(&last, 0, sizeof(last));
 	last.screen = -1;
@@ -196,7 +201,21 @@ parse_config(char **argv)
 			config->daemon = 1;
 		} else if (strcmp(argv[0], "--debug") == 0)
 			show_debug = 1;
-		else if (strcmp(argv[0], "--screen") == 0) {
+		else if (strcmp(argv[0], "--clear") == 0)
+			config->source = 0;
+		else if (strcmp(argv[0], "--no-atoms") == 0) {
+			config->target &= ~TARGET_ATOMS;
+			if (config->target == 0) {
+				warnx("--no-atoms conflicts with --no-root");
+				return NULL;
+			}
+		} else if (strcmp(argv[0], "--no-root") == 0) {
+			config->target &= ~TARGET_ROOT;
+			if (config->target == 0) {
+				warnx("--no-root conflicts with --no-atoms");
+				return NULL;
+			}
+		} else if (strcmp(argv[0], "--screen") == 0) {
 			if (*++argv == NULL) {
 				warnx("missing argument for --screen");
 				return NULL;
@@ -252,7 +271,7 @@ parse_config(char **argv)
 		last.output = "all";
 	add_option(config, last);
 
-	if (config->count == 0)
+	if (config->count == 0 && config->source != 0)
 		return NULL;
 
 	init_buffers(config);
