@@ -488,7 +488,8 @@ process_output(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
 static void
 update_atoms(xcb_connection_t *c, xcb_screen_t *screen, xcb_pixmap_t pixmap)
 {
-	static int first_run = 1;
+	static xcb_void_cookie_t (*delete)(xcb_connection_t *, uint32_t) =
+	    xcb_kill_client;
 	int i;
 	xcb_intern_atom_cookie_t atom_cookie[2];
 	xcb_intern_atom_reply_t *atom_reply[2];
@@ -523,13 +524,11 @@ update_atoms(xcb_connection_t *c, xcb_screen_t *screen, xcb_pixmap_t pixmap)
 			old[i] = NULL;
 	}
 
-	if (first_run) {
-		if (old[0] != NULL)
-			xcb_kill_client(c, *old[0]);
-		if (old[1] != NULL && (old[0] == NULL || *old[0] != *old[1]))
-			xcb_kill_client(c, *old[1]);
-		first_run = 0;
-	}
+	if (old[0] != NULL)
+		delete(c, *old[0]);
+	if (old[1] != NULL && (old[0] == NULL || *old[0] != *old[1]))
+		delete(c, *old[1]);
+	delete = xcb_free_pixmap;
 
 	for (i = 0; i < 2; i++) {
 		if (atom_reply[i] != NULL)
@@ -606,6 +605,7 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 		}
 	}
 
+	xcb_free_gc(c, gc);
 	xcb_change_window_attributes(c, screen->root, XCB_CW_BACK_PIXMAP,
 	    &pixmap);
 	update_atoms(c, screen, pixmap);
@@ -699,8 +699,10 @@ main(int argc, char *argv[])
 	for (snum = 0; it.rem; snum++, xcb_screen_next(&it))
 		process_screen(c, it.data, snum, config->options);
 
-	xcb_request_check(c,
-	    xcb_set_close_down_mode(c, XCB_CLOSE_DOWN_RETAIN_PERMANENT));
+	xcb_kill_client(c, XCB_KILL_ALL_TEMPORARY);
+	xcb_request_check(c, xcb_set_close_down_mode(c,
+	    XCB_CLOSE_DOWN_RETAIN_TEMPORARY));
+
 	if (xcb_connection_has_error(c))
 		warnx("error encountered while setting wallpaper");
 
