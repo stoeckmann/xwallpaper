@@ -85,6 +85,12 @@ load_pixman_image(xcb_connection_t *c, xcb_screen_t *screen, FILE *fp)
 		pixman_image = load_xpm(c, screen, fp);
 	}
 #endif /* WITH_XPM */
+#ifdef WITH_FARBFELD
+	if (pixman_image == NULL) {
+		rewind(fp);
+		pixman_image = load_farbfeld(fp);
+	}
+#endif /* WITH_FARBBFELD */
 
 	return pixman_image;
 }
