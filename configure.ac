@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([xwallpaper], [0.7.0], [https://github.com/stoeckmann/xwallpaper/issues], [xwallpaper], [https://github.com/stoeckmann/xwallpaper])
+AC_INIT([xwallpaper], [0.6.6], [https://github.com/stoeckmann/xwallpaper/issues], [xwallpaper], [https://github.com/stoeckmann/xwallpaper])
 AC_CONFIG_SRCDIR([Makefile.am])
 AC_CONFIG_HEADERS([config.h])
 
@@ -149,6 +149,31 @@ AS_IF([test "$xpm_ok" = yes],
   [AC_DEFINE(WITH_XPM,[1],[Define to 1 if you want XPM support.])],[]
 )
 AM_CONDITIONAL(BUILD_XPM, [test "$xpm_ok" = yes])
+
+# Check if FARBFELD support is requested
+AC_MSG_CHECKING(whether FARBFELD support is requested)
+AC_ARG_WITH([farbfeld],
+  [AS_HELP_STRING([--without-farbfeld], [disable FARBFELD support])],
+  [
+   if test "$withval" = no ; then
+     farbfeld_support=no
+   else
+     farbfeld_support=yes
+   fi
+  ],
+  [ farbfeld_support=auto ]
+)
+AC_MSG_RESULT($farbfeld_support)
+if test "$farbfeld_support" != no ; then
+  farbfeld_ok="yes"
+else
+  farbfeld_ok="no"
+fi
+AS_IF([test "$farbfeld_ok" = yes],
+  [AC_DEFINE(WITH_FARBFELD,[1],[Define to 1 if you want FARBFELD support.])],[]
+)
+AM_CONDITIONAL(BUILD_FARBFELD, [test "$farbfeld_ok" = yes])
+
 
 AC_ARG_WITH([zshcompletiondir],
  AS_HELP_STRING([--with-zshcompletiondir=DIR], [Zsh completions directory]),
