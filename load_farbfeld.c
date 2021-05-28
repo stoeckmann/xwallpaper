@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Tobias Stoeckmann <tobias@stoeckmann.org>
+ * Copyright (c) 2021 Ricardo B. Ayres <ricardo.bosqueiro.ayres@gmail.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -70,8 +70,10 @@ load_farbfeld(FILE *fp)
 
 	img = pixman_image_create_bits(PIXMAN_a8r8g8b8, width, height, pixels,
 	    width * sizeof(uint32_t));
-	if (img == NULL)
+	if (img == NULL) {
 		errx(1, "failed to create pixman image");
+		free(pixels);
+	}
 
 	return img;
 }
