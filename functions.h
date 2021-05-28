@@ -96,6 +96,7 @@ wp_output_t	*get_outputs(xcb_connection_t *, xcb_screen_t *);
 pixman_image_t	*load_jpeg(FILE *);
 pixman_image_t	*load_png(FILE *);
 pixman_image_t	*load_xpm(xcb_connection_t *, xcb_screen_t *, FILE *);
+pixman_image_t	*load_farbfeld(FILE *);
 wp_config_t	*parse_config(char **);
 void		 stage1_sandbox(void);
 void		 stage2_sandbox(void);
