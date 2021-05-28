@@ -49,4 +49,10 @@ else
 EXTRA_DIST += load_xpm.c
 endif
 
+if BUILD_FARBFELD
+xwallpaper_SOURCES += load_farbfeld.c
+else
+EXTRA_DIST += load_farbfeld.c
+endif
+
 AM_CFLAGS = $(CWARNFLAGS)
