@@ -104,6 +104,7 @@ add_common_stage2_rules(scmp_filter_ctx ctx)
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(sigprocmask), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(sigreturn), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(socketpair), 0) ||
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(statx), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(umask), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(wait4), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(write), 0) ||
