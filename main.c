@@ -491,7 +491,7 @@ process_atoms(xcb_connection_t *c, xcb_screen_t *screen, xcb_pixmap_t *pixmap,
 {
 	static xcb_void_cookie_t (*delete)(xcb_connection_t *, uint32_t) =
 	    xcb_kill_client;
-	int i;
+	int deleted, i;
 	xcb_intern_atom_cookie_t atom_cookie[2];
 	xcb_intern_atom_reply_t *atom_reply[2];
 	xcb_get_property_cookie_t property_cookie[2];
@@ -525,11 +525,16 @@ process_atoms(xcb_connection_t *c, xcb_screen_t *screen, xcb_pixmap_t *pixmap,
 			old[i] = NULL;
 	}
 
-	if (old[0] != NULL && pixmap != NULL && *old[0] != *pixmap)
+	deleted = 0;
+	if (old[0] != NULL && pixmap != NULL && *old[0] != *pixmap) {
 		delete(c, *old[0]);
-	if (old[1] != NULL && (old[0] == NULL || *old[0] != *old[1]))
+		deleted = 1;
+	}
+	if (old[1] != NULL && (old[0] == NULL || *old[0] != *old[1])) {
 		delete(c, *old[1]);
-	if (pixmap != NULL)
+		deleted = 1;
+	}
+	if (deleted)
 		delete = xcb_free_pixmap;
 
 	if (old_pixmap != NULL) {
@@ -572,6 +577,7 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 	wp_option_t *opt, *options;
 	uint16_t width, height;
 	xcb_rectangle_t rectangle;
+	int created;
 
 	options = config->options;
 
@@ -621,10 +627,12 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 		rectangle.width = width;
 		rectangle.height = height;
 		xcb_poly_fill_rectangle(c, pixmap, gc, 1, &rectangle);
+		created = 1;
 	} else {
 		debug("reusing atom pixmap (%dx%d)\n", width, height);
 		gc = xcb_generate_id(c);
 		xcb_create_gc(c, gc, pixmap, 0, NULL);
+		created = 0;
 	}
 
 	for (opt = options; opt != NULL && opt->filename != NULL; opt++) {
@@ -665,8 +673,9 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 	}
 	if (config->target & TARGET_ATOMS) {
 		process_atoms(c, screen, &result, NULL);
-		xcb_kill_client(c, XCB_KILL_ALL_TEMPORARY);
-		xcb_set_close_down_mode(c, XCB_CLOSE_DOWN_RETAIN_TEMPORARY);
+		if (created)
+			xcb_set_close_down_mode(c,
+			    XCB_CLOSE_DOWN_RETAIN_PERMANENT);
 	} else
 		xcb_free_pixmap(c, pixmap);
 	xcb_request_check(c, xcb_clear_area(c, 0, screen->root, 0, 0, 0, 0));
@@ -706,8 +715,6 @@ process_event(wp_config_t *config, xcb_connection_t *c,
 			process_screen(c, it.data, snum, config);
 		}
 	}
-	xcb_request_check(c, xcb_set_close_down_mode(c,
-	    XCB_CLOSE_DOWN_RETAIN_TEMPORARY));
 	if (xcb_connection_has_error(c))
 		warnx("error encountered while setting wallpaper");
 }
