@@ -36,6 +36,10 @@
 
 #define MAXIMUM(x, y) ((x) > (y) ? (x) : (y))
 
+#ifdef WITH_RANDR
+xcb_pixmap_t created_pixmap = XCB_BACK_PIXMAP_NONE;
+#endif /* WITH_RANDR */
+
 static uint32_t
 get_max_rows_per_request(xcb_connection_t *c, xcb_image_t *image, uint32_t n)
 {
@@ -618,6 +622,11 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 	if (pixmap == XCB_BACK_PIXMAP_NONE) {
 		debug("creating pixmap (%dx%d)\n", width, height);
 		pixmap = xcb_generate_id(c);
+#ifdef WITH_RANDR
+		if (config->daemon && (config->target & TARGET_ATOMS) &&
+		    !xcb_connection_has_error(c))
+			created_pixmap = pixmap;
+#endif /* WITH_RANDR */
 		xcb_create_pixmap(c, screen->root_depth, pixmap, screen->root,
 		    width, height);
 		gc = xcb_generate_id(c);
@@ -725,6 +734,9 @@ main(int argc, char *argv[])
 {
 	wp_config_t *config;
 	xcb_connection_t *c;
+#ifdef WITH_RANDR
+	xcb_connection_t *c2;
+#endif /* WITH_RANDR */
 	xcb_generic_event_t *event;
 	xcb_screen_iterator_t it;
 	int snum;
@@ -744,6 +756,13 @@ main(int argc, char *argv[])
 	c = xcb_connect(NULL, NULL);
 	if (xcb_connection_has_error(c))
 		errx(1, "failed to connect to X server");
+#ifdef WITH_RANDR
+	if (config->daemon) {
+		c2 = xcb_connect(NULL, NULL);
+		if (xcb_connection_has_error(c2))
+			errx(1, "failed to connect to X server for clean up");
+	}
+#endif /* WITH_RANDR */
 #ifdef HAVE_PLEDGE
 	if (pledge("stdio", NULL) == -1)
 		err(1, "pledge");
@@ -784,6 +803,19 @@ main(int argc, char *argv[])
 #endif /* WITH_RANDR */
 
 	xcb_disconnect(c);
+
+#ifdef WITH_RANDR
+	if (config->daemon) {
+		if (created_pixmap != XCB_BACK_PIXMAP_NONE) {
+			debug("killing X client\n");
+			xcb_request_check(c2,
+			    xcb_kill_client(c2, created_pixmap));
+		}
+		if (xcb_connection_has_error(c2))
+			debug("failed to kill X client\n");
+		xcb_disconnect(c2);
+	}
+#endif /* WITH_RANDR */
 
 	return 0;
 }
