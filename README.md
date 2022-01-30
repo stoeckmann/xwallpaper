@@ -38,7 +38,7 @@ filter system calls.
 
 ## License
 
-Copyright (c) 2021 Tobias Stoeckmann <tobias@stoeckmann.org>
+Copyright (c) 2022 Tobias Stoeckmann <tobias@stoeckmann.org>
 
 Permission to use, copy, modify, and distribute this software for any
 purpose with or without fee is hereby granted, provided that the above
