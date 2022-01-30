@@ -44,7 +44,7 @@ add_buffer(wp_buffer_t **bufs, size_t *count, wp_buffer_t buf)
 		*bufs = realloc(*bufs, (*count + 1) * sizeof(**bufs));
 		if (*bufs == NULL)
 			err(1, "failed to allocate memory");
-		memcpy(&(*bufs)[(*count)++], &buf, sizeof(buf));
+		(*bufs)[(*count)++] = buf;
 	}
 
 	return i;
@@ -75,7 +75,7 @@ add_option(wp_config_t *config, wp_option_t option)
 		o = &config->options[config->count++];
 		config->options[config->count].filename = NULL;
 	}
-	memcpy(o, &option, sizeof(*o));
+	*o = option;
 }
 
 static void
@@ -93,7 +93,7 @@ init_buffers(wp_config_t *config)
 
 	buffers = NULL;
 	buffers_count = 0;
-	memset(&buffer, 0, sizeof(buffer));
+	buffer = (wp_buffer_t){ 0 };
 
 	for (i = 0; i < config->count; i++) {
 		struct stat st;
@@ -168,7 +168,7 @@ parse_box(char *s, wp_box_t **box)
 		return 1;
 
 	*box = xmalloc(sizeof(*box));
-	memcpy(*box, &b, sizeof(b));
+	**box = b;
 
 	return 0;
 }
@@ -180,14 +180,15 @@ parse_config(char **argv)
 	wp_option_t last;
 
 	config = xmalloc(sizeof(*config));
-	config->options = NULL;
-	config->count = 0;
-	config->daemon = 0;
-	config->source = SOURCE_ATOMS;
-	config->target = TARGET_ATOMS | TARGET_ROOT;
+	*config = (wp_config_t){
+		.options = NULL,
+		.count = 0,
+		.daemon = 0,
+		.source = SOURCE_ATOMS,
+		.target = TARGET_ATOMS | TARGET_ROOT
+	};
 
-	memset(&last, 0, sizeof(last));
-	last.screen = -1;
+	last = (wp_option_t){ .screen = -1 };
 
 	while (*argv != NULL) {
 		if (strcmp(argv[0], "--daemon") == 0) {

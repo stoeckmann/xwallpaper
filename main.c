@@ -593,11 +593,13 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 		/* fake an output that fits the picture */
 		width = pixman_image_get_width(pixman_image);
 		height = pixman_image_get_height(pixman_image);
-		tile_output.x = 0;
-		tile_output.y = 0;
-		tile_output.width = width;
-		tile_output.height = height;
-		tile_output.name = NULL;
+		tile_output = (wp_output_t){
+			.x = 0,
+			.y = 0,
+			.width = width,
+			.height = height,
+			.name = NULL
+		};
 		outputs = &tile_output;
 	} else {
 		width = screen->width_in_pixels;
@@ -631,10 +633,12 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 		    width, height);
 		gc = xcb_generate_id(c);
 		xcb_create_gc(c, gc, pixmap, 0, NULL);
-		rectangle.x = 0;
-		rectangle.y = 0;
-		rectangle.width = width;
-		rectangle.height = height;
+		rectangle = (xcb_rectangle_t){
+			.x = 0,
+			.y = 0,
+			.width = width,
+			.height = height
+		};
 		xcb_poly_fill_rectangle(c, pixmap, gc, 1, &rectangle);
 		created = 1;
 	} else {

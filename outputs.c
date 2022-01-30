@@ -119,25 +119,29 @@ get_randr_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 		name = xcb_randr_get_output_info_name(output_reply);
 		name_len = xcb_randr_get_output_info_name_length(output_reply);
 
-		outputs[j].name = xmalloc(name_len + 1);
+		outputs[j] = (wp_output_t){
+			.x = crtc_reply->x,
+			.y = crtc_reply->y,
+			.width = crtc_reply->width,
+			.height = crtc_reply->height
+		};
+		outputs[j].name = xmalloc((size_t)name_len + 1);
 		memcpy(outputs[j].name, name, name_len);
 		outputs[j].name[name_len] = '\0';
 
-		outputs[j].x = crtc_reply->x;
-		outputs[j].y = crtc_reply->y;
-		outputs[j].width = crtc_reply->width;
-		outputs[j].height = crtc_reply->height;
 		debug("output detected: %s, %dx%d+%d+%d\n", outputs[j].name,
 		    outputs[j].width, outputs[j].height, outputs[j].x,
 		    outputs[j].y);
 		j++;
 	}
 
-	outputs[j].name = NULL;
-	outputs[j].x = 0;
-	outputs[j].y = 0;
-	outputs[j].width = screen->width_in_pixels;
-	outputs[j].height = screen->height_in_pixels;
+	outputs[j] = (wp_output_t){
+		.name = NULL,
+		.x = 0,
+		.y = 0,
+		.width = screen->width_in_pixels,
+		.height = screen->height_in_pixels
+	};
 	debug("(randr) screen dimensions: %dx%d+%d+%d\n", outputs[j].width,
 	    outputs[j].height, outputs[j].x, outputs[j].y);
 	return outputs;
@@ -156,11 +160,13 @@ get_outputs(xcb_connection_t *c, xcb_screen_t *screen)
 #endif /* WITH_RANDR */
 	outputs = xmalloc(sizeof(*outputs));
 
-	outputs[0].name = NULL;
-	outputs[0].x = 0;
-	outputs[0].y = 0;
-	outputs[0].width = screen->width_in_pixels;
-	outputs[0].height = screen->height_in_pixels;
+	outputs[0] = (wp_output_t){
+		.name = NULL,
+		.x = 0,
+		.y = 0,
+		.width = screen->width_in_pixels,
+		.height = screen->height_in_pixels
+	};
 	debug("(no randr) screen dimensions: %dx%d+%d+%d\n",
 	    outputs[0].width, outputs[0].height, outputs[0].x, outputs[0].y);
 	return outputs;
