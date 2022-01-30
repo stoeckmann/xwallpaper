@@ -46,7 +46,7 @@ do_load_jpeg(FILE *fp, struct jpeg_decompress_struct *cinfo, uint32_t **pixels)
 {
 	wp_err_t wp_err;
 	pixman_image_t *img;
-	JDIMENSION y, x, width, height;
+	JDIMENSION y, width, height;
 	uint32_t *p;
 	size_t len;
 

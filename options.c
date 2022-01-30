@@ -148,9 +148,6 @@ static int
 parse_box(char *s, wp_box_t **box)
 {
 	wp_box_t b;
-	char *endptr;
-	char sign;
-	uint16_t val;
 
 	switch (sscanf(s, "%hux%hu+%hu+%hu", &b.width, &b.height,
 	    &b.x_off, &b.y_off)) {
