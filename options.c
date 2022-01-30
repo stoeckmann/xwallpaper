@@ -232,7 +232,7 @@ parse_config(char **argv)
 			last.output = *argv;
 		} else if ((last.mode = parse_mode(*argv)) != -1) {
 			if (*++argv == NULL) {
-				warnx("missing argument for %s", *argv);
+				warnx("missing argument for %s", *(argv - 1));
 				return NULL;
 			}
 			last.filename = *argv;
