@@ -58,6 +58,7 @@ add_common_stage2_rules(scmp_filter_ctx ctx)
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(fstatat64), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(fsync), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(ftruncate), 0) ||
+	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(futex), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(getdents), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(getegid), 0) ||
 	    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(geteuid), 0) ||
