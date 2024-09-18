@@ -495,7 +495,7 @@ process_atoms(xcb_connection_t *c, xcb_screen_t *screen, xcb_pixmap_t *pixmap,
 {
 	static xcb_void_cookie_t (*delete)(xcb_connection_t *, uint32_t) =
 	    xcb_kill_client;
-	int deleted, i;
+	int i;
 	xcb_intern_atom_cookie_t atom_cookie[2];
 	xcb_intern_atom_reply_t *atom_reply[2];
 	xcb_get_property_cookie_t property_cookie[2];
@@ -529,17 +529,16 @@ process_atoms(xcb_connection_t *c, xcb_screen_t *screen, xcb_pixmap_t *pixmap,
 			old[i] = NULL;
 	}
 
-	deleted = 0;
 	if (old[0] != NULL && pixmap != NULL && *old[0] != *pixmap) {
 		delete(c, *old[0]);
-		deleted = 1;
 	}
 	if (old[1] != NULL && (old[0] == NULL || *old[0] != *old[1])) {
 		delete(c, *old[1]);
-		deleted = 1;
 	}
-	if (deleted)
+	if (pixmap != NULL) {
+		/* kill clients only once, otherwise we might kill ourself */
 		delete = xcb_free_pixmap;
+	}
 
 	if (old_pixmap != NULL) {
 		if (old[0] != NULL && old[1] != NULL && *old[0] == *old[1])
