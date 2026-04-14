@@ -218,7 +218,12 @@ parse_config(char **argv)
 				warnx("missing argument for --screen");
 				return NULL;
 			}
+			add_option(config, last);
+			last.filename = NULL;
+			last.mode = 0;
+			last.output = NULL;
 			last.screen = parse_screen(*argv);
+			last.trim = NULL;
 		} else if (strcmp(argv[0], "--output") == 0) {
 			if (*++argv == NULL) {
 				warnx("missing argument for --output");
@@ -229,8 +234,10 @@ parse_config(char **argv)
 				return NULL;
 			}
 			add_option(config, last);
-			last.trim = NULL;
+			last.filename = NULL;
+			last.mode = 0;
 			last.output = *argv;
+			last.trim = NULL;
 		} else if ((last.mode = parse_mode(*argv)) != -1) {
 			if (*++argv == NULL) {
 				warnx("missing argument for %s", *(argv - 1));
@@ -252,6 +259,8 @@ parse_config(char **argv)
 				warnx("missing argument for --trim");
 				return NULL;
 			}
+			last.filename = NULL;
+			last.mode = 0;
 			if (parse_box(*argv, &last.trim)) {
 				warnx("invalid trim box: %s\n", *argv);
 				return NULL;
