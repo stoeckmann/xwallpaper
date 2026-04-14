@@ -730,6 +730,22 @@ process_event(wp_config_t *config, xcb_connection_t *c,
 	if (xcb_connection_has_error(c))
 		warnx("error encountered while setting wallpaper");
 }
+
+static void
+process_events(xcb_connection_t *c, wp_config_t *config)
+{
+	xcb_screen_iterator_t it = xcb_setup_roots_iterator(xcb_get_setup(c));
+	xcb_generic_event_t *event;
+	int snum;
+
+	for (snum = 0; it.rem; snum++, xcb_screen_next(&it))
+		xcb_request_check(c, xcb_randr_select_input(c,
+		    it.data->root,
+		    XCB_RANDR_NOTIFY_MASK_SCREEN_CHANGE));
+
+	while ((event = xcb_wait_for_event(c)) != NULL)
+		process_event(config, c, event);
+}
 #endif /* WITH_RANDR */
 
 int
@@ -740,7 +756,6 @@ main(int argc, char *argv[])
 #ifdef WITH_RANDR
 	xcb_connection_t *c2;
 #endif /* WITH_RANDR */
-	xcb_generic_event_t *event;
 	xcb_screen_iterator_t it;
 	int snum;
 #ifdef HAVE_PLEDGE
@@ -794,14 +809,10 @@ main(int argc, char *argv[])
 
 #ifdef WITH_RANDR
 	if (config->daemon) {
-		it = xcb_setup_roots_iterator(xcb_get_setup(c));
-		for (snum = 0; it.rem; snum++, xcb_screen_next(&it))
-			xcb_request_check(c, xcb_randr_select_input(c,
-			    it.data->root,
-			    XCB_RANDR_NOTIFY_MASK_SCREEN_CHANGE));
-
-		while ((event = xcb_wait_for_event(c)) != NULL)
-			process_event(config, c, event);
+		if (config->daemon && has_randr == 0)
+			warnx("--daemon requires RandR");
+		else
+			process_events(c, config);
 	}
 #endif /* WITH_RANDR */
 

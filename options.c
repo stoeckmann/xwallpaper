@@ -192,10 +192,6 @@ parse_config(char **argv)
 
 	while (*argv != NULL) {
 		if (strcmp(argv[0], "--daemon") == 0) {
-			if (has_randr == 0) {
-				warnx("--daemon requires RandR");
-				return NULL;
-			}
 			config->daemon = 1;
 		} else if (strcmp(argv[0], "--debug") == 0)
 			show_debug = 1;
@@ -247,10 +243,6 @@ parse_config(char **argv)
 		} else if (strcmp(argv[0], "--no-randr") == 0) {
 			if (config->count > 0) {
 				warnx("--no-randr conflicts with --output");
-				return NULL;
-			}
-			if (config->daemon) {
-				warnx("--daemon requires RandR");
 				return NULL;
 			}
 			has_randr = 0;
