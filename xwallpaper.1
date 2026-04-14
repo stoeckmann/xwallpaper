@@ -101,11 +101,6 @@ to update only atoms used for pseudo transparency. It is therefore mutually
 exclusive with
 .Fl Fl no-atoms
 option.
-.It Fl Fl trim Ar widthxheight+x+y
-Specifies area of interest in source file. If output mode tries to output more
-pixels than specified with trim box, then the adjacent pixels around the
-box will be added to output. Black pixels are only added if no further source
-pixels are left.
 .It Fl Fl output Ar output
 Specifies the output on which a subsequently supplied file shall be set as
 wallpaper.
@@ -131,6 +126,11 @@ then the ratio of the input file is adjusted.
 Uses tiling mode.
 Draws the input file at the upper left corner of the output
 and repeats the image until the remaining area of the output is covered.
+.It Fl Fl trim Ar widthxheight+x+y
+Specifies area of interest in source file. If output mode tries to output more
+pixels than specified with trim box, then the adjacent pixels around the
+box will be added to output. Black pixels are only added if no further source
+pixels are left.
 .It Fl Fl version
 Prints version and exits.
 .It Fl Fl zoom Ar file
