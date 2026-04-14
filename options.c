@@ -178,8 +178,7 @@ parse_desktop(char *s)
 {
 	if (strcmp(s, "all") == 0)
 		return -1;
-	/* return parse_int(s); */
-	return -1;
+	return parse_int(s);
 }
 
 wp_config_t *

@@ -70,6 +70,23 @@ Displays debug messages on the standard error output while
 is running.  If used in conjunction with
 .Fl Fl daemon
 the process will not modify the standard input and outputs.
+.It Fl Fl desktop Ar desktop
+Specifies a desktop by its _NET_CURRENT_DESKTOP property number,
+retrievable with e.g.
+.Cm xprop -root _NET_CURRENT_DESKTOP .
+The special keyword
+.Cm all
+makes the wallpaper default for all desktops for the given screen.
+If
+.Fl Fl desktop
+is used without
+.Fl Fl daemon ,
+then
+.Nm xwallpaper
+will only adjust the screen if current desktop matches the specified desktop.
+With
+.Fl Fl daemon ,
+it changes the desktop whenever the virtual desktop becomes active.
 .It Fl Fl focus Ar file
 In conjunction with
 .Fl Fl trim
@@ -164,6 +181,9 @@ Centers and recenters a JPEG file after output updates on all outputs:
 .Pp
 Tiles a JPEG file as a wallpaper on VGA-1 and zooms into a PNG file on LVDS-1:
 .Dl $ xwallpaper --output VGA-1 --tile file.jpg --output LVDS-1 --zoom file.png
+.Pp
+Special wallpaper on desktop 3:
+.Dl $ xwallpaper --daemon --zoom file.jpg --desktop 3 --zoom file.png
 .Sh BUGS
 Use the GitHub issue tracker:
 .Lk https://github.com/stoeckmann/xwallpaper/issues
