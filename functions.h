@@ -65,6 +65,7 @@ typedef struct wp_buffer {
 
 typedef struct wp_option {
 	wp_buffer_t	*buffer;
+	int		 desktop;
 	char		*filename;
 	int		 mode;
 	char		*output;

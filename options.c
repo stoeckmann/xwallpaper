@@ -140,7 +140,7 @@ parse_int(char *string)
 
 	value = strtol(string, &endptr, 10);
 	if (endptr == string || *endptr != '\0' || value < 0 || value > INT_MAX)
-		errx(1, "failed to parse screen number: %s", string);
+		errx(1, "failed to parse number: %s", string);
 	return value;
 }
 
@@ -173,6 +173,15 @@ parse_box(char *s, wp_box_t **box)
 	return 0;
 }
 
+static int
+parse_desktop(char *s)
+{
+	if (strcmp(s, "all") == 0)
+		return -1;
+	/* return parse_int(s); */
+	return -1;
+}
+
 wp_config_t *
 parse_config(char **argv)
 {
@@ -188,7 +197,10 @@ parse_config(char **argv)
 		.target = TARGET_ATOMS | TARGET_ROOT
 	};
 
-	last = (wp_option_t){ .screen = -1 };
+	last = (wp_option_t){
+		.desktop = -1,
+		.screen = -1
+	};
 
 	while (*argv != NULL) {
 		if (strcmp(argv[0], "--daemon") == 0) {
@@ -197,7 +209,18 @@ parse_config(char **argv)
 			show_debug = 1;
 		else if (strcmp(argv[0], "--clear") == 0)
 			config->source = 0;
-		else if (strcmp(argv[0], "--no-atoms") == 0) {
+		else if (strcmp(argv[0], "--desktop") == 0) {
+			if (*++argv == NULL) {
+				warnx("missing argument for --desktop");
+				return NULL;
+			}
+			add_option(config, last);
+			last.desktop = parse_desktop(*argv);
+			last.filename = NULL;
+			last.mode = 0;
+			last.output = NULL;
+			last.trim = NULL;
+		} else if (strcmp(argv[0], "--no-atoms") == 0) {
 			config->target &= ~TARGET_ATOMS;
 			if (config->target == 0) {
 				warnx("--no-atoms conflicts with --no-root");
@@ -215,6 +238,7 @@ parse_config(char **argv)
 				return NULL;
 			}
 			add_option(config, last);
+			last.desktop = -1;
 			last.filename = NULL;
 			last.mode = 0;
 			last.output = NULL;
