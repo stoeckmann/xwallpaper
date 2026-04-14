@@ -133,14 +133,14 @@ parse_mode(char *mode)
 }
 
 static int
-parse_screen(char *screen)
+parse_int(char *string)
 {
 	char *endptr;
 	long value;
 
-	value = strtol(screen, &endptr, 10);
-	if (endptr == screen || *endptr != '\0' || value < 0 || value > INT_MAX)
-		errx(1, "failed to parse screen number: %s", screen);
+	value = strtol(string, &endptr, 10);
+	if (endptr == string || *endptr != '\0' || value < 0 || value > INT_MAX)
+		errx(1, "failed to parse screen number: %s", string);
 	return value;
 }
 
@@ -222,7 +222,7 @@ parse_config(char **argv)
 			last.filename = NULL;
 			last.mode = 0;
 			last.output = NULL;
-			last.screen = parse_screen(*argv);
+			last.screen = parse_int(*argv);
 			last.trim = NULL;
 		} else if (strcmp(argv[0], "--output") == 0) {
 			if (*++argv == NULL) {
