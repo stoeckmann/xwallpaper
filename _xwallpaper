@@ -7,6 +7,7 @@ _arguments \
     '--clear[set background to black]' \
     '--daemon[enable daemon mode]' \
     '--debug[enable debug mode]' \
+    '*--desktop[X desktop number]:X desktop number' \
     '--no-atoms[no update of pseudo transparency atoms]' \
     '--no-randr[disable randr support]' \
     '--no-root[no update of root window background]' \

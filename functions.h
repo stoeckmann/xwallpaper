@@ -65,6 +65,7 @@ typedef struct wp_buffer {
 
 typedef struct wp_option {
 	wp_buffer_t	*buffer;
+	int		 desktop;
 	char		*filename;
 	int		 mode;
 	char		*output;
@@ -91,6 +92,7 @@ extern int	 show_debug;
 
 void		 debug(const char *, ...);
 void		 free_outputs(wp_output_t *);
+wp_option_t	*get_option(wp_option_t *, int, int, const char *);
 wp_output_t	*get_output(wp_output_t *, char *);
 wp_output_t	*get_outputs(xcb_connection_t *, xcb_screen_t *);
 pixman_image_t	*load_jpeg(FILE *);
