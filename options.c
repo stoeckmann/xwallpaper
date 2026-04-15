@@ -60,8 +60,7 @@ add_option(wp_config_t *config, wp_option_t option)
 		return;
 
 	for (i = 0; i < config->count; i++)
-		if (config->options[i].output != NULL &&
-		    strcmp(config->options[i].output, option.output) == 0 &&
+		if (strcmp(config->options[i].output, option.output) == 0 &&
 		    config->options[i].screen == option.screen)
 			break;
 
@@ -138,9 +137,12 @@ parse_int(char *string)
 	char *endptr;
 	long value;
 
+	if (strcmp(string, "all") == 0)
+		return -1;
+
 	value = strtol(string, &endptr, 10);
 	if (endptr == string || *endptr != '\0' || value < 0 || value > INT_MAX)
-		errx(1, "failed to parse screen number: %s", string);
+		errx(1, "failed to parse number: %s", string);
 	return value;
 }
 
@@ -188,7 +190,10 @@ parse_config(char **argv)
 		.target = TARGET_ATOMS | TARGET_ROOT
 	};
 
-	last = (wp_option_t){ .screen = -1 };
+	last = (wp_option_t){
+		.output = "all",
+		.screen = -1
+	};
 
 	while (*argv != NULL) {
 		if (strcmp(argv[0], "--daemon") == 0) {
@@ -217,7 +222,7 @@ parse_config(char **argv)
 			add_option(config, last);
 			last.filename = NULL;
 			last.mode = 0;
-			last.output = NULL;
+			last.output = "all";
 			last.screen = parse_int(*argv);
 			last.trim = NULL;
 		} else if (strcmp(argv[0], "--output") == 0) {
@@ -266,8 +271,6 @@ parse_config(char **argv)
 		}
 		++argv;
 	}
-	if (has_randr == -1 && last.output == NULL)
-		last.output = "all";
 	add_option(config, last);
 
 	if (!(config->target & TARGET_ATOMS))

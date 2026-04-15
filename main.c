@@ -576,7 +576,7 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 	xcb_gcontext_t gc;
 	xcb_get_geometry_cookie_t geom_cookie;
 	xcb_get_geometry_reply_t *geom_reply;
-	wp_output_t *outputs, tile_output;
+	wp_output_t *outputs, tile_output[2];
 	wp_option_t *opt, *options;
 	uint16_t width, height;
 	xcb_rectangle_t rectangle;
@@ -585,21 +585,25 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 	options = config->options;
 
 	/* let X perform non-randr tiling if requested */
-	if (options != NULL && options[0].mode == MODE_TILE &&
-	    options[0].output == NULL && options[1].filename == NULL) {
+	if (has_randr == 0 && options != NULL && options[0].mode == MODE_TILE &&
+	    strcmp(options[0].output, "all") == 0 &&
+	    options[1].filename == NULL) {
 		pixman_image_t *pixman_image = options->buffer->pixman_image;
 
 		/* fake an output that fits the picture */
 		width = pixman_image_get_width(pixman_image);
 		height = pixman_image_get_height(pixman_image);
-		tile_output = (wp_output_t){
+		tile_output[0] = (wp_output_t){
 			.x = 0,
 			.y = 0,
 			.width = width,
 			.height = height,
+			.name = "all"
+		};
+		tile_output[1] = (wp_output_t){
 			.name = NULL
 		};
-		outputs = &tile_output;
+		outputs = tile_output;
 	} else {
 		width = screen->width_in_pixels;
 		height = screen->height_in_pixels;
@@ -654,8 +658,7 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 		if (opt->screen != -1 && opt->screen != snum)
 			continue;
 
-		if (opt->output != NULL &&
-		    strcmp(opt->output, "all") == 0)
+		if (strcmp(opt->output, "all") == 0)
 			for (output = outputs; output->name != NULL; output++)
 				process_output(c, screen, output, opt,
 				    pixmap, gc);
@@ -692,7 +695,7 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 		xcb_free_pixmap(c, pixmap);
 	xcb_request_check(c, xcb_clear_area(c, 0, screen->root, 0, 0, 0, 0));
 
-	if (outputs != &tile_output)
+	if (outputs != tile_output)
 		free_outputs(outputs);
 }
 
