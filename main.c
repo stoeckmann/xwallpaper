@@ -568,6 +568,12 @@ process_atoms(xcb_connection_t *c, xcb_screen_t *screen, xcb_pixmap_t *pixmap,
 	}
 }
 
+static int
+get_current_desktop()
+{
+	return -1;
+}
+
 static void
 process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
     wp_config_t *config)
@@ -580,8 +586,9 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 	wp_option_t *opt, *options;
 	uint16_t width, height;
 	xcb_rectangle_t rectangle;
-	int created;
+	int created, dnum;
 
+	dnum = get_current_desktop();
 	options = config->options;
 
 	/* let X perform non-randr tiling if requested */
@@ -654,7 +661,7 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 	for (output = outputs; output->name != NULL; output++) {
 		wp_option_t *opt;
 
-		opt = get_option(options, snum, output->name);
+		opt = get_option(options, snum, dnum, output->name);
 		if (opt == NULL)
 			continue;
 
@@ -695,10 +702,10 @@ usage(void)
 {
 	fprintf(stderr,
 "usage: xwallpaper [--screen <screen>] [--clear] [--daemon] [--debug]\n"
-"  [--no-atoms] [--no-randr] [--no-root] [--trim widthxheight[+x+y]]\n"
-"  [--output <output>] [--center <file>] [--focus <file>]\n"
-"  [--maximize <file>] [--stretch <file>] [--tile <file>] [--zoom <file>]\n"
-"  [--version]\n");
+"  [--desktop <desktop>] [--no-atoms] [--no-randr] [--no-root]\n"
+"  [--trim widthxheight[+x+y]] [--output <output>] [--center <file>]\n"
+"  [--focus <file>] [--maximize <file>] [--stretch <file>] [--tile <file>]\n"
+"  [--zoom <file>] [--version]\n");
 	exit(1);
 }
 
@@ -741,6 +748,17 @@ process_events(xcb_connection_t *c, wp_config_t *config)
 		process_event(config, c, event);
 }
 #endif /* WITH_RANDR */
+
+int
+has_desktop_option(wp_config_t *config)
+{
+	wp_option_t *opt;
+
+	for (opt = config->options; opt != NULL && opt->filename != NULL; opt++)
+		if (opt->desktop != -1)
+			return 1;
+	return 0;
+}
 
 int
 main(int argc, char *argv[])
@@ -803,7 +821,8 @@ main(int argc, char *argv[])
 
 #ifdef WITH_RANDR
 	if (config->daemon) {
-		if (config->daemon && has_randr == 0)
+		if (config->daemon && has_randr == 0 &&
+		    !has_desktop_option(config))
 			warnx("--daemon requires RandR");
 		else
 			process_events(c, config);

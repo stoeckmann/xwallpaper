@@ -61,7 +61,8 @@ add_option(wp_config_t *config, wp_option_t option)
 
 	for (i = 0; i < config->count; i++)
 		if (strcmp(config->options[i].output, option.output) == 0 &&
-		    config->options[i].screen == option.screen)
+		    config->options[i].screen == option.screen &&
+		    config->options[i].desktop == option.desktop)
 			break;
 
 	if (i != config->count) {
@@ -88,13 +89,14 @@ streq_all(const char *s1, const char *s2)
 }
 
 wp_option_t *
-get_option(wp_option_t *options, int snum, const char *output)
+get_option(wp_option_t *options, int snum, int dnum, const char *output)
 {
 	wp_option_t *opt, *result;
 
 	result = NULL;
 	for (opt = options; opt != NULL && opt->filename != NULL; opt++)
 		if ((opt->screen == -1 || opt->screen == snum) &&
+		    (opt->desktop == -1 || opt->desktop == dnum) &&
 		    streq_all(opt->output, output))
 			result = opt;
 
@@ -215,6 +217,7 @@ parse_config(char **argv)
 	};
 
 	last = (wp_option_t){
+		.desktop = -1,
 		.output = "all",
 		.screen = -1
 	};
@@ -226,7 +229,18 @@ parse_config(char **argv)
 			show_debug = 1;
 		else if (strcmp(argv[0], "--clear") == 0)
 			config->source = 0;
-		else if (strcmp(argv[0], "--no-atoms") == 0) {
+		else if (strcmp(argv[0], "--desktop") == 0) {
+			if (*++argv == NULL) {
+				warnx("missing argument for --desktop");
+				return NULL;
+			}
+			add_option(config, last);
+			last.desktop = -1; /*parse_int(*argv);*/
+			last.filename = NULL;
+			last.mode = 0;
+			last.output = "all";
+			last.trim = NULL;
+		} else if (strcmp(argv[0], "--no-atoms") == 0) {
 			config->target &= ~TARGET_ATOMS;
 			if (config->target == 0) {
 				warnx("--no-atoms conflicts with --no-root");
@@ -244,6 +258,7 @@ parse_config(char **argv)
 				return NULL;
 			}
 			add_option(config, last);
+			last.desktop = -1;
 			last.filename = NULL;
 			last.mode = 0;
 			last.output = "all";
