@@ -82,6 +82,7 @@ OPTION_PREDICATE(no_atoms)
 OPTION_PREDICATE(no_randr)
 OPTION_PREDICATE(no_root)
 OPTION_PREDICATE(version)
+OPTION_PREDICATE(test)
 
 int
 source_option(wp_argcv_t argcv)
@@ -234,6 +235,27 @@ option_verify(wp_argcv_t argcv)
 }
 
 static void
+test(wp_argcv_t argcv)
+{
+	const char *outputs[] = { "DP", "HDMI", "VGA", NULL };
+
+        for (int screen = 0; screen <= 2; screen++)
+        for (int desktop = 0; desktop <= 4; desktop++)
+        for (int output = 0; outputs[output]; output++) {
+                const wp_match_t m = option_match_wallpaper(argcv,
+			screen, desktop, outputs[output]);
+
+                if (!m.filename)
+			continue;
+
+		printf("screen %d desktop %d output %-4s mode %-8s wallpaper %s\n",
+			screen, desktop, outputs[output], m.modename, m.filename);
+        }
+
+	exit(EXIT_SUCCESS);
+}
+
+static void
 help(void)
 {
 	printf("usage: xwallpaper [options]...\n\noptions:\n\n");
@@ -265,6 +287,9 @@ parse_config(int argc, char **argv)
 		has_randr = 0;
 
 	option_verify(argcv);
+
+	if (has_test_option(argcv))
+		test(argcv);
 
 	return (wp_config_t) { .argcv = argcv };
 }

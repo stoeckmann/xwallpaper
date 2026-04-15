@@ -56,7 +56,8 @@ o(stretch,  file,     "stretches file to fully cover output")		\
 o(tile,     file,     "tiles file repeatedly")				\
 o(trim,     geometry, "area of interest in source file")		\
 o(version,  void,     "prints version and exits")			\
-o(zoom,     file,     "zooms file to fit output with cropping")
+o(zoom,     file,     "zooms file to fit output with cropping")		\
+o(test,     void,     "prints tests and exits")
 
 enum {
 	OPTION_END = 0,
