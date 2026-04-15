@@ -39,6 +39,7 @@
 #define TARGET_ROOT	2
 
 #define OPTIONS(o)							\
+o(help,     void,     "prints help and exits")				\
 o(center,   file,     "centers the input file on the output")		\
 o(clear,    void,     "initializes screen with a black background")	\
 o(daemon,   void,     "keeps xwallpaper running in background")		\

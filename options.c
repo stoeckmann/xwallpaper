@@ -74,6 +74,7 @@ optparse_number(struct optarg *oa)
 		return 0;						\
 	}
 
+OPTION_PREDICATE(help)
 OPTION_PREDICATE(clear)
 OPTION_PREDICATE(daemon)
 OPTION_PREDICATE(debug)
@@ -213,13 +214,16 @@ option_verify(wp_argcv_t argcv)
 		case OPTION_OK:
 			continue;
 		case OPTION_INVALID:
-			errx(EXIT_FAILURE, "invalid option: %s\n",
+			errx(EXIT_FAILURE, "invalid option: %s\n"
+				"Try the '--help' option for usage.\n",
 				option_name);
 		case OPTION_MISSING:
-			errx(EXIT_FAILURE, "%s: missing argument, expected <%s>\n",
+			errx(EXIT_FAILURE, "%s: missing argument, expected <%s>\n"
+				"Try the '--help' option for usage.\n",
 				option_name, option_expect);
 		case OPTION_NOTNUMBER:
-			errx(EXIT_FAILURE, "%s: argument not a number: %s\n",
+			errx(EXIT_FAILURE, "%s: argument not a number: %s\n"
+				"Try the '--help' option for usage.\n",
 				option_name, option_string);
 		default:
 			errx(EXIT_FAILURE, "unknown error\n");
@@ -229,10 +233,28 @@ option_verify(wp_argcv_t argcv)
 		errx(EXIT_FAILURE, "--daemon requires RandR\n");
 }
 
+static void
+help(void)
+{
+	printf("usage: xwallpaper [options]...\n\noptions:\n\n");
+
+#define OPTION_HELP(name_, arg_, desc_)					\
+	if (strcmp(#arg_, "void") == 0)					\
+		printf("  %-21s  %s\n", opt(#name_).s, desc_);		\
+	else								\
+		printf("  %-10s %-10s  %s\n", opt(#name_).s, "<"#arg_">", desc_);
+OPTIONS(OPTION_HELP)
+
+	exit(EXIT_SUCCESS);
+}
+
 wp_config_t
 parse_config(int argc, char **argv)
 {
 	wp_argcv_t argcv = { .c = argc, .v = argv };
+
+	if (has_help_option(argcv))
+		help();
 
 	if (has_version_option(argcv)) {
 		puts(VERSION);
