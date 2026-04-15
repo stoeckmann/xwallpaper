@@ -79,6 +79,28 @@ add_option(wp_config_t *config, wp_option_t option)
 	*o = option;
 }
 
+static int
+streq_all(const char *s1, const char *s2)
+{
+	if (strcmp(s1, "all") == 0 || strcmp(s2, "all") == 0)
+		return 1;
+	return strcmp(s1, s2) == 0;
+}
+
+wp_option_t *
+get_option(wp_option_t *options, int snum, const char *output)
+{
+	wp_option_t *opt, *result;
+
+	result = NULL;
+	for (opt = options; opt != NULL && opt->filename != NULL; opt++)
+		if ((opt->screen == -1 || opt->screen == snum) &&
+		    streq_all(opt->output, output))
+			result = opt;
+
+	return result;
+}
+
 static void
 init_buffers(wp_config_t *config)
 {

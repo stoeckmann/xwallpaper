@@ -576,7 +576,7 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 	xcb_gcontext_t gc;
 	xcb_get_geometry_cookie_t geom_cookie;
 	xcb_get_geometry_reply_t *geom_reply;
-	wp_output_t *outputs, tile_output[2];
+	wp_output_t *output, *outputs, tile_output[2];
 	wp_option_t *opt, *options;
 	uint16_t width, height;
 	xcb_rectangle_t rectangle;
@@ -651,23 +651,14 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 		created = 0;
 	}
 
-	for (opt = options; opt != NULL && opt->filename != NULL; opt++) {
-		wp_output_t *output;
+	for (output = outputs; output->name != NULL; output++) {
+		wp_option_t *opt;
 
-		/* ignore options which are not relevant for this screen */
-		if (opt->screen != -1 && opt->screen != snum)
+		opt = get_option(options, snum, output->name);
+		if (opt == NULL)
 			continue;
 
-		if (strcmp(opt->output, "all") == 0)
-			for (output = outputs; output->name != NULL; output++)
-				process_output(c, screen, output, opt,
-				    pixmap, gc);
-		else {
-			output = get_output(outputs, opt->output);
-			if (output != NULL)
-				process_output(c, screen, output, opt,
-				    pixmap, gc);
-		}
+		process_output(c, screen, output, opt, pixmap, gc);
 	}
 
 	if (options == NULL)
