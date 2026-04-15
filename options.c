@@ -60,14 +60,15 @@ add_option(wp_config_t *config, wp_option_t option)
 		return;
 
 	for (i = 0; i < config->count; i++)
-		if (config->options[i].output != NULL &&
-		    strcmp(config->options[i].output, option.output) == 0 &&
+		if (strcmp(config->options[i].output, option.output) == 0 &&
 		    config->options[i].screen == option.screen)
 			break;
 
-	if (i != config->count)
-		o = config->options + i;
-	else {
+	if (i != config->count) {
+		memmove(config->options + i, config->options + i + 1,
+		    (config->count - i) * sizeof(option));
+		o = config->options + config->count - 1;
+	} else {
 		config->options = realloc(config->options,
 		    (config->count + 2) * sizeof(*config->options));
 		if (config->options == NULL)
@@ -76,6 +77,28 @@ add_option(wp_config_t *config, wp_option_t option)
 		config->options[config->count].filename = NULL;
 	}
 	*o = option;
+}
+
+static int
+streq_all(const char *s1, const char *s2)
+{
+	if (strcmp(s1, "all") == 0 || strcmp(s2, "all") == 0)
+		return 1;
+	return strcmp(s1, s2) == 0;
+}
+
+wp_option_t *
+get_option(wp_option_t *options, int snum, const char *output)
+{
+	wp_option_t *opt, *result;
+
+	result = NULL;
+	for (opt = options; opt != NULL && opt->filename != NULL; opt++)
+		if ((opt->screen == -1 || opt->screen == snum) &&
+		    streq_all(opt->output, output))
+			result = opt;
+
+	return result;
 }
 
 static void
@@ -138,9 +161,12 @@ parse_int(char *string)
 	char *endptr;
 	long value;
 
+	if (strcmp(string, "all") == 0)
+		return -1;
+
 	value = strtol(string, &endptr, 10);
 	if (endptr == string || *endptr != '\0' || value < 0 || value > INT_MAX)
-		errx(1, "failed to parse screen number: %s", string);
+		errx(1, "failed to parse number: %s", string);
 	return value;
 }
 
@@ -188,7 +214,10 @@ parse_config(char **argv)
 		.target = TARGET_ATOMS | TARGET_ROOT
 	};
 
-	last = (wp_option_t){ .screen = -1 };
+	last = (wp_option_t){
+		.output = "all",
+		.screen = -1
+	};
 
 	while (*argv != NULL) {
 		if (strcmp(argv[0], "--daemon") == 0) {
@@ -217,7 +246,7 @@ parse_config(char **argv)
 			add_option(config, last);
 			last.filename = NULL;
 			last.mode = 0;
-			last.output = NULL;
+			last.output = "all";
 			last.screen = parse_int(*argv);
 			last.trim = NULL;
 		} else if (strcmp(argv[0], "--output") == 0) {
@@ -266,8 +295,6 @@ parse_config(char **argv)
 		}
 		++argv;
 	}
-	if (has_randr == -1 && last.output == NULL)
-		last.output = "all";
 	add_option(config, last);
 
 	if (!(config->target & TARGET_ATOMS))
