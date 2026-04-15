@@ -20,6 +20,7 @@
   #include <xcb/randr.h>
 #endif /* WITH_RANDR */
 #include <xcb/xcb.h>
+#include <xcb/xcb_ewmh.h>
 #include <xcb/xcb_image.h>
 
 #include <err.h>
@@ -569,9 +570,20 @@ process_atoms(xcb_connection_t *c, xcb_screen_t *screen, xcb_pixmap_t *pixmap,
 }
 
 static int
-get_current_desktop()
+get_current_desktop(xcb_connection_t *c, int snum)
 {
-	return -1;
+	xcb_ewmh_connection_t ewmh;
+	uint32_t dnum;
+
+	if (!xcb_ewmh_init_atoms_replies(&ewmh,
+	    xcb_ewmh_init_atoms(c, &ewmh), NULL))
+		return -1;
+
+	if (!xcb_ewmh_get_current_desktop_reply(&ewmh,
+	    xcb_ewmh_get_current_desktop(&ewmh, snum), &dnum, NULL))
+		return -1;
+
+	return dnum;
 }
 
 static void
@@ -588,7 +600,7 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 	xcb_rectangle_t rectangle;
 	int created, dnum;
 
-	dnum = get_current_desktop();
+	dnum = get_current_desktop(c, snum);
 	options = config->options;
 
 	/* let X perform non-randr tiling if requested */
@@ -709,9 +721,30 @@ usage(void)
 	exit(1);
 }
 
+static void
+process_desktop_event(wp_config_t *config, xcb_connection_t *c,
+    xcb_property_notify_event_t *event, xcb_atom_t cdesk)
+{
+	xcb_screen_iterator_t it;
+	int snum;
+
+	if (event->atom != cdesk)
+		return;
+
+	it = xcb_setup_roots_iterator(xcb_get_setup(c));
+	for (snum = 0; it.rem; snum++, xcb_screen_next(&it))
+		if (it.data->root == event->window) {
+			process_screen(c, it.data, snum, config);
+			break;
+		}
+
+	if (xcb_connection_has_error(c))
+		warnx("error encountered while setting wallpaper");
+}
+
 #ifdef WITH_RANDR
 static void
-process_event(wp_config_t *config, xcb_connection_t *c,
+process_randr_event(wp_config_t *config, xcb_connection_t *c,
     xcb_generic_event_t *event) {
 	xcb_randr_screen_change_notify_event_t *randr_event;
 	xcb_screen_iterator_t it;
@@ -731,22 +764,6 @@ process_event(wp_config_t *config, xcb_connection_t *c,
 	if (xcb_connection_has_error(c))
 		warnx("error encountered while setting wallpaper");
 }
-
-static void
-process_events(xcb_connection_t *c, wp_config_t *config)
-{
-	xcb_screen_iterator_t it = xcb_setup_roots_iterator(xcb_get_setup(c));
-	xcb_generic_event_t *event;
-	int snum;
-
-	for (snum = 0; it.rem; snum++, xcb_screen_next(&it))
-		xcb_request_check(c, xcb_randr_select_input(c,
-		    it.data->root,
-		    XCB_RANDR_NOTIFY_MASK_SCREEN_CHANGE));
-
-	while ((event = xcb_wait_for_event(c)) != NULL)
-		process_event(config, c, event);
-}
 #endif /* WITH_RANDR */
 
 int
@@ -758,6 +775,61 @@ has_desktop_option(wp_config_t *config)
 		if (opt->desktop != -1)
 			return 1;
 	return 0;
+}
+
+static void
+process_events(xcb_connection_t *c, wp_config_t *config)
+{
+	xcb_screen_iterator_t it = xcb_setup_roots_iterator(xcb_get_setup(c));
+	xcb_generic_event_t *event;
+	xcb_atom_t cdesk;
+	int snum;
+
+	for (snum = 0; it.rem; snum++, xcb_screen_next(&it)) {
+#ifdef WITH_RANDR
+		if (has_randr == 1)
+			xcb_request_check(c, xcb_randr_select_input(c,
+			    it.data->root,
+			    XCB_RANDR_NOTIFY_MASK_SCREEN_CHANGE));
+#endif /* WITH_RANDR */
+		if (has_desktop_option(config)) {
+			const char *name = "_NET_CURRENT_DESKTOP";
+			xcb_intern_atom_cookie_t cookie;
+			xcb_intern_atom_reply_t *reply;
+
+			cookie = xcb_intern_atom(c, 0, strlen(name), name);
+			reply = xcb_intern_atom_reply(c, cookie, NULL);
+
+			if (reply != NULL) {
+				uint32_t pchange[] = {
+				    XCB_EVENT_MASK_PROPERTY_CHANGE
+				};
+
+				cdesk = reply->atom;
+				free(reply);
+
+				xcb_request_check(c,
+				    xcb_change_window_attributes_checked(c,
+				    it.data->root, XCB_CW_EVENT_MASK, pchange));
+			}
+		}
+	}
+
+	while ((event = xcb_wait_for_event(c)) != NULL) {
+		switch (event->response_type) {
+		case XCB_PROPERTY_NOTIFY:
+			process_desktop_event(config, c,
+			    (xcb_property_notify_event_t *) event, cdesk);
+			break;
+#ifdef WITH_RANDR
+		case XCB_RANDR_SCREEN_CHANGE_NOTIFY:
+			process_randr_event(config, c, event);
+			break;
+#endif /* WITH_RANDR */
+		default:
+			break;
+		}
+	}
 }
 
 int
@@ -819,15 +891,13 @@ main(int argc, char *argv[])
 	if (xcb_connection_has_error(c))
 		warnx("error encountered while setting wallpaper");
 
-#ifdef WITH_RANDR
 	if (config->daemon) {
 		if (config->daemon && has_randr == 0 &&
 		    !has_desktop_option(config))
-			warnx("--daemon requires RandR");
+			warnx("--daemon requires --desktop or RandR");
 		else
 			process_events(c, config);
 	}
-#endif /* WITH_RANDR */
 
 	xcb_disconnect(c);
 

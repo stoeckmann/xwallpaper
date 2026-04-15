@@ -235,7 +235,7 @@ parse_config(char **argv)
 				return NULL;
 			}
 			add_option(config, last);
-			last.desktop = -1; /*parse_int(*argv);*/
+			last.desktop = parse_int(*argv);
 			last.filename = NULL;
 			last.mode = 0;
 			last.output = "all";
