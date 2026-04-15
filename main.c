@@ -66,89 +66,82 @@ get_max_rows_per_request(xcb_connection_t *c, xcb_image_t *image, uint32_t n)
 }
 
 static pixman_image_t *
-load_pixman_image(xcb_connection_t *c, xcb_screen_t *screen, FILE *fp)
+load_pixman_image(xcb_connection_t *c, xcb_screen_t *screen,
+    wp_match_t match, wp_config_t *config)
 {
-	pixman_image_t *pixman_image;
+	pixman_image_t *img = NULL;
+	int height, width;
+	wp_box_t box;
 
-	pixman_image = NULL;
+	FILE *fp = fopen(match.filename, "rb");
+	if (!fp)
+		err(1, "open '%s' failed", match.filename);
+
+	debug("loading %s\n", match.filename);
 
 #ifdef WITH_PNG
-	if (pixman_image == NULL) {
+	if (img == NULL) {
 		rewind(fp);
-		pixman_image = load_png(fp);
+		img = load_png(fp);
 	}
 #endif /* WITH_PNG */
 #ifdef WITH_JPEG
-	if (pixman_image == NULL) {
+	if (img == NULL) {
 		rewind(fp);
-		pixman_image = load_jpeg(fp);
+		img = load_jpeg(fp);
 	}
 #endif /* WITH_JPEG */
 #ifdef WITH_XPM
-	if (pixman_image == NULL) {
+	if (img == NULL) {
 		rewind(fp);
-		pixman_image = load_xpm(c, screen, fp);
+		img = load_xpm(c, screen, fp);
 	}
 #endif /* WITH_XPM */
 
-	return pixman_image;
+	if (img == NULL)
+		errx(1, "failed to parse %s", match.filename);
+	fclose(fp);
+
+	height = pixman_image_get_height(img);
+	width = pixman_image_get_width(img);
+
+	if (height > UINT16_MAX || width > UINT16_MAX)
+		errx(1, "%s has illegal dimensions", match.filename);
+
+	if (match.trim != NULL && parse_box(match.trim, &box)) {
+		if (height < box.y_off + box.height ||
+		    width < box.x_off + box.width)
+			errx(1, "%s is smaller than trim box", match.filename);
+	}
+
+	return img;
 }
 
 static void
-load_pixman_images(xcb_connection_t *c, xcb_screen_t *screen,
-    wp_option_t *options)
-{
-	wp_option_t *opt;
-	pixman_image_t *img;
-
-	for (opt = options; opt != NULL && opt->filename != NULL; opt++)
-		if (opt->buffer->pixman_image == NULL) {
-			int height, width;
-
-			debug("loading %s\n", opt->filename);
-			img = load_pixman_image(c, screen, opt->buffer->fp);
-			if (img == NULL)
-				errx(1, "failed to parse %s", opt->filename);
-			opt->buffer->pixman_image = img;
-			fclose(opt->buffer->fp);
-
-			height = pixman_image_get_height(img);
-			width = pixman_image_get_width(img);
-
-			if (height > UINT16_MAX || width > UINT16_MAX)
-				errx(1, "%s has illegal dimensions",
-				    opt->filename);
-
-			if (opt->trim != NULL) {
-				wp_box_t *trim = opt->trim;
-
-				if (height < trim->y_off + trim->height ||
-				    width < trim->x_off + trim->width)
-					errx(1, "%s is smaller than trim box",
-					    opt->filename);
-			}
-		}
-}
-
-static void
-tile(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
+tile(xcb_connection_t *c, xcb_screen_t *screen, wp_config_t *config,
+	pixman_image_t *dest, wp_output_t *output, wp_match_t match)
 {
 	pixman_image_t *pixman_image;
 	int src_width, src_height, src_x, src_y;
 	uint16_t off_x, off_y;
 
-	pixman_image = option->buffer->pixman_image;
+	pixman_image = load_pixman_image(c, screen, match, config);
 
-	if (option->trim == NULL) {
+	if (match.trim == NULL) {
 		src_width = pixman_image_get_width(pixman_image);
 		src_height = pixman_image_get_height(pixman_image);
 		src_x = 0;
 		src_y = 0;
 	} else {
-		src_width = option->trim->width;
-		src_height = option->trim->height;
-		src_x = option->trim->x_off;
-		src_y = option->trim->y_off;
+		wp_box_t box;
+
+		if (!parse_box(match.trim, &box))
+			errx(EXIT_FAILURE, "invalid trim box: %s\n", match.trim);
+
+		src_width = box.width;
+		src_height = box.height;
+		src_x = box.x_off;
+		src_y = box.y_off;
 	}
 
 	/* reset transformation and filter of transform calls */
@@ -177,7 +170,7 @@ tile(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 				w = src_width;
 
 			debug("tiling %s for %s (area %dx%d+%d+%d)\n",
-			    option->filename, output->name != NULL ?
+			    match.filename, output->name != NULL ?
 			    output->name : "screen", w, h, off_x, off_y);
 			pixman_image_composite(PIXMAN_OP_CONJOINT_SRC,
 			    pixman_image, NULL, dest, src_x, src_y, 0, 0,
@@ -187,7 +180,8 @@ tile(pixman_image_t *dest, wp_output_t *output, wp_option_t *option)
 }
 
 static void
-transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option,
+transform(xcb_connection_t *c, xcb_screen_t *screen, wp_config_t *config,
+    pixman_image_t *dest, wp_output_t *output, wp_match_t match,
     pixman_filter_t filter)
 {
 	pixman_image_t *pixman_image;
@@ -201,23 +195,28 @@ transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option,
 	float translate_x, translate_y;
 	float off_x, off_y;
 
-	mode = option->mode;
-	pixman_image = option->buffer->pixman_image;
+	mode = match.mode;
+	pixman_image = load_pixman_image(c, screen, match, config);
 	pix_width = pixman_image_get_width(pixman_image);
 	pix_height = pixman_image_get_height(pixman_image);
 	xcb_width = output->width;
 	xcb_height = output->height;
 
-	if (option->trim == NULL) {
+	if (match.trim == NULL) {
 		src_width = pix_width;
 		src_height = pix_height;
 		off_x = 0;
 		off_y = 0;
 	} else {
-		src_width = option->trim->width;
-		src_height = option->trim->height;
-		off_x = (float)option->trim->x_off;
-		off_y = (float)option->trim->y_off;
+		wp_box_t box;
+
+		if (!parse_box(match.trim, &box))
+			errx(EXIT_FAILURE, "invalid trim box: %s\n", match.trim);
+
+		src_width = box.width;
+		src_height = box.height;
+		off_x = box.x_off;
+		off_y = box.y_off;
 	}
 
 	if (mode == MODE_FOCUS) {
@@ -358,15 +357,15 @@ transform(pixman_image_t *dest, wp_output_t *output, wp_option_t *option,
 
 	pixman_f_transform_init_translate(&ftransform,
 	    translate_x, translate_y);
-	if (option->mode != MODE_CENTER)
+	if (match.mode != OPTION_center)
 		pixman_f_transform_scale(&ftransform, NULL, w_scale, h_scale);
 	pixman_image_set_filter(pixman_image, filter, NULL, 0);
 	pixman_transform_from_pixman_f_transform(&transform, &ftransform);
 	pixman_image_set_transform(pixman_image, &transform);
 
 	debug("composing %s for %s (area %dx%d+%d+%d) (mode %d)\n",
-	    option->filename, output->name != NULL ? output->name : "screen",
-	    output->width, output->height, 0, 0, option->mode);
+	    match.filename, output->name != NULL ? output->name : "screen",
+	    output->width, output->height, 0, 0, match.mode);
 	pixman_image_composite(PIXMAN_OP_CONJOINT_SRC, pixman_image, NULL, dest,
 	    0, 0, 0, 0, 0, 0, output->width, output->height);
 }
@@ -437,8 +436,9 @@ put_wallpaper(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
 }
 
 static void
-process_output(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
-    wp_option_t *option, xcb_pixmap_t pixmap, xcb_gcontext_t gc)
+process_output(xcb_connection_t *c, xcb_screen_t *screen, wp_config_t *config,
+    wp_output_t *output, wp_match_t match, xcb_pixmap_t pixmap,
+    xcb_gcontext_t gc)
 {
 	uint32_t *pixels;
 	size_t len, stride;
@@ -473,10 +473,10 @@ process_output(xcb_connection_t *c, xcb_screen_t *screen, wp_output_t *output,
 	if (pixman_image == NULL)
 		errx(1, "failed to create temporary pixman image");
 
-	if (option->mode == MODE_TILE)
-		tile(pixman_image, output, option);
+	if (match.mode == OPTION_tile)
+		tile(c, screen, config, pixman_image, output, match);
 	else
-		transform(pixman_image, output, option, filter);
+		transform(c, screen, config, pixman_image, output, match, filter);
 
 	xcb_image = xcb_image_create_native(c, output->width, output->height,
 	    XCB_IMAGE_FORMAT_Z_PIXMAP, depth, NULL, len, (uint8_t *) pixels);
@@ -594,15 +594,14 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 	xcb_gcontext_t gc;
 	xcb_get_geometry_cookie_t geom_cookie;
 	xcb_get_geometry_reply_t *geom_reply;
-	wp_output_t *outputs, tile_output;
-	wp_option_t *opt, *options;
+	wp_output_t *output, *outputs, tile_output;
 	uint16_t width, height;
 	xcb_rectangle_t rectangle;
 	int created, dnum;
 
 	dnum = get_current_desktop(c, snum);
-	options = config->options;
 
+#if 0 // FIXME
 	/* let X perform non-randr tiling if requested */
 	if (options != NULL && options[0].screen == snum &&
 	    options[0].desktop == dnum && options[0].mode == MODE_TILE &&
@@ -621,12 +620,15 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 		};
 		outputs = &tile_output;
 	} else {
+#endif
 		width = screen->width_in_pixels;
 		height = screen->height_in_pixels;
 		outputs = get_outputs(c, screen);
+#if 0 // FIXME
 	}
+#endif
 
-	if (config->source == SOURCE_ATOMS) {
+	if (source_option(config->argcv) == SOURCE_ATOMS) {
 		process_atoms(c, screen, NULL, &pixmap);
 		if (pixmap != XCB_BACK_PIXMAP_NONE) {
 			geom_cookie = xcb_get_geometry(c, pixmap);
@@ -644,7 +646,8 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 		debug("creating pixmap (%dx%d)\n", width, height);
 		pixmap = xcb_generate_id(c);
 #ifdef WITH_RANDR
-		if (config->daemon && (config->target & TARGET_ATOMS) &&
+		if (has_daemon_option(config->argcv) &&
+		    (target_option(config->argcv) & TARGET_ATOMS) &&
 		    !xcb_connection_has_error(c))
 			created_pixmap = pixmap;
 #endif /* WITH_RANDR */
@@ -667,34 +670,27 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 		created = 0;
 	}
 
-	for (opt = options; opt != NULL && opt->filename != NULL; opt++) {
-		wp_output_t *output;
+	for (output = outputs; output->name != NULL; output++) {
+		wp_match_t match = option_match_wallpaper(config->argcv,
+			snum, dnum, output->name);
 
-		/* ignore irrelevant options for this screen/desktop pair */
-		if ((opt->screen != -1 && opt->screen != snum) ||
-		    (opt->desktop != -1 && opt->desktop != dnum))
+		if (!match.filename)
 			continue;
 
-		if (opt->output != NULL &&
-		    strcmp(opt->output, "all") == 0)
-			for (output = outputs; output->name != NULL; output++)
-				process_output(c, screen, output, opt,
-				    pixmap, gc);
-		else {
-			output = get_output(outputs, opt->output);
-			if (output != NULL)
-				process_output(c, screen, output, opt,
-				    pixmap, gc);
-		}
+		process_output(c, screen, config, output, match, pixmap, gc);
 	}
 
+#if 0 // FIXME
 	if (options == NULL)
 		result = XCB_BACK_PIXMAP_NONE;
 	else
 		result = pixmap;
+#else
+	result = pixmap;
+#endif
 
 	xcb_free_gc(c, gc);
-	if (config->target & TARGET_ROOT) {
+	if (target_option(config->argcv) & TARGET_ROOT) {
 		/* always set a pixmap, even before clearing */
 		xcb_change_window_attributes(c, screen->root,
 		    XCB_CW_BACK_PIXMAP, &pixmap);
@@ -704,7 +700,7 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 			xcb_free_pixmap(c, pixmap);
 		}
 	}
-	if (config->target & TARGET_ATOMS) {
+	if (target_option(config->argcv) & TARGET_ATOMS) {
 		process_atoms(c, screen, &result, NULL);
 		if (created)
 			xcb_set_close_down_mode(c,
@@ -712,21 +708,6 @@ process_screen(xcb_connection_t *c, xcb_screen_t *screen, int snum,
 	} else
 		xcb_free_pixmap(c, pixmap);
 	xcb_request_check(c, xcb_clear_area(c, 0, screen->root, 0, 0, 0, 0));
-
-	if (outputs != &tile_output)
-		free_outputs(outputs);
-}
-
-static void
-usage(void)
-{
-	fprintf(stderr,
-"usage: xwallpaper [--screen <screen>] [--clear] [--daemon] [--debug]\n"
-"  [--desktop <desktop>] [--no-atoms] [--no-randr] [--no-root]\n"
-"  [--trim widthxheight[+x+y]] [--output <output>] [--center <file>]\n"
-"  [--focus <file>] [--maximize <file>] [--stretch <file>] [--tile <file>]\n"
-"  [--zoom <file>] [--version]\n");
-	exit(1);
 }
 
 static void
@@ -774,17 +755,6 @@ process_randr_event(wp_config_t *config, xcb_connection_t *c,
 }
 #endif /* WITH_RANDR */
 
-int
-has_desktop_option(wp_config_t *config)
-{
-	wp_option_t *opt;
-
-	for (opt = config->options; opt != NULL && opt->filename != NULL; opt++)
-		if (opt->desktop != -1)
-			return 1;
-	return 0;
-}
-
 static void
 process_events(xcb_connection_t *c, wp_config_t *config)
 {
@@ -800,7 +770,7 @@ process_events(xcb_connection_t *c, wp_config_t *config)
 			    it.data->root,
 			    XCB_RANDR_NOTIFY_MASK_SCREEN_CHANGE));
 #endif /* WITH_RANDR */
-		if (has_desktop_option(config)) {
+		if (has_desktop_option(config->argcv)) {
 			const char *name = "_NET_CURRENT_DESKTOP";
 			xcb_intern_atom_cookie_t cookie;
 			xcb_intern_atom_reply_t *reply;
@@ -843,7 +813,7 @@ process_events(xcb_connection_t *c, wp_config_t *config)
 int
 main(int argc, char *argv[])
 {
-	wp_config_t *config;
+	wp_config_t config;
 	xcb_connection_t *c;
 #ifdef WITH_RANDR
 	xcb_connection_t *c2;
@@ -857,17 +827,17 @@ main(int argc, char *argv[])
 #ifdef WITH_SECCOMP
 	stage1_sandbox();
 #endif /* WITH_SECCOMP */
-	if (argc < 2 || (config = parse_config(++argv)) == NULL)
-		usage();
 
-	if (config->daemon && daemon(0, show_debug) < 0)
+	config = parse_config(argc, argv);
+
+	if (has_daemon_option(config.argcv) && daemon(0, show_debug) < 0)
 		warnx("failed to daemonize");
 
 	c = xcb_connect(NULL, NULL);
 	if (xcb_connection_has_error(c))
 		errx(1, "failed to connect to X server");
 #ifdef WITH_RANDR
-	if (config->daemon) {
+	if (has_daemon_option(config.argcv)) {
 		c2 = xcb_connect(NULL, NULL);
 		if (xcb_connection_has_error(c2))
 			errx(1, "failed to connect to X server for clean up");
@@ -891,26 +861,24 @@ main(int argc, char *argv[])
 	 */
 	if (it.rem == 0)
 		errx(1, "no screen found");
-	load_pixman_images(c, it.data, config->options);
 
 	for (snum = 0; it.rem; snum++, xcb_screen_next(&it))
-		process_screen(c, it.data, snum, config);
+		process_screen(c, it.data, snum, &config);
 
 	if (xcb_connection_has_error(c))
 		warnx("error encountered while setting wallpaper");
 
-	if (config->daemon) {
-		if (config->daemon && has_randr == 0 &&
-		    !has_desktop_option(config))
+	if (has_daemon_option(config.argcv)) {
+		if (has_randr == 0 && !has_desktop_option(config.argcv))
 			warnx("--daemon requires --desktop or RandR");
 		else
-			process_events(c, config);
+			process_events(c, &config);
 	}
 
 	xcb_disconnect(c);
 
 #ifdef WITH_RANDR
-	if (config->daemon) {
+	if (has_daemon_option(config.argcv)) {
 		if (created_pixmap != XCB_BACK_PIXMAP_NONE) {
 			debug("killing X client\n");
 			xcb_request_check(c2,
