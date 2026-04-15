@@ -64,9 +64,11 @@ add_option(wp_config_t *config, wp_option_t option)
 		    config->options[i].screen == option.screen)
 			break;
 
-	if (i != config->count)
-		o = config->options + i;
-	else {
+	if (i != config->count) {
+		memmove(config->options + i, config->options + i + 1,
+		    (config->count - i) * sizeof(option));
+		o = config->options + config->count - 1;
+	} else {
 		config->options = realloc(config->options,
 		    (config->count + 2) * sizeof(*config->options));
 		if (config->options == NULL)
