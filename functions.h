@@ -38,6 +38,37 @@
 #define TARGET_ATOMS	1
 #define TARGET_ROOT	2
 
+#define OPTIONS(o)							\
+o(help,     void,     "prints help and exits")				\
+o(center,   file,     "centers the input file on the output")		\
+o(clear,    void,     "initializes screen with a black background")	\
+o(daemon,   void,     "keeps xwallpaper running in background")		\
+o(debug,    void,     "displays debug messages on standard error")	\
+o(desktop,  number,   "desktop by its _NET_CURRENT_DESKTOP number")	\
+o(focus,    file,     "trim box guaranteed to be visible on output")	\
+o(maximize, file,     "maximizes to fit without cropping")		\
+o(no_atoms, void,     "atoms for pseudo transparency are not updated")	\
+o(no_randr, void,     "uses the whole output inputs")			\
+o(no_root,  void,     "background of the root window is not updated")	\
+o(output,   output,   "output for subsequent wallpaper files")		\
+o(screen,   number,   "screen by its screen number")			\
+o(stretch,  file,     "stretches file to fully cover output")		\
+o(tile,     file,     "tiles file repeatedly")				\
+o(trim,     geometry, "area of interest in source file")		\
+o(version,  void,     "prints version and exits")			\
+o(zoom,     file,     "zooms file to fit output with cropping")		\
+o(test,     void,     "prints tests and exits")
+
+enum {
+	OPTION_END = 0,
+	OPTION_OK = 0,
+	OPTION_INVALID,
+	OPTION_MISSING,
+	OPTION_NOTNUMBER,
+#define OPTION_LABEL_ENUM(name_, arg_, desc_) OPTION_##name_,
+OPTIONS(OPTION_LABEL_ENUM)
+};
+
 #define SAFE_MUL(res, x, y) do {					 \
 	if ((y) != 0 && SIZE_MAX / (y) < (x))				 \
 		errx(1, "memory allocation would exceed system limits"); \
@@ -56,28 +87,13 @@ typedef struct wp_box {
 	uint16_t	y_off;
 } wp_box_t;
 
-typedef struct wp_buffer {
-	FILE		*fp;
-	pixman_image_t	*pixman_image;
-	dev_t		 st_dev;
-	ino_t		 st_ino;
-} wp_buffer_t;
-
-typedef struct wp_option {
-	wp_buffer_t	*buffer;
-	char		*filename;
-	int		 mode;
-	char		*output;
-	int		 screen;
-	wp_box_t	*trim;
-} wp_option_t;
+typedef struct wp_argcv {
+	int		  c;
+	char		**v;
+} wp_argcv_t;
 
 typedef struct wp_config {
-	wp_option_t	*options;
-	size_t		 count;
-	int		 daemon;
-	int		 source;
-	int		 target;
+	wp_argcv_t	argcv;
 } wp_config_t;
 
 typedef struct wp_output {
@@ -86,17 +102,35 @@ typedef struct wp_output {
 	uint16_t width, height;
 } wp_output_t;
 
+typedef struct wp_match {
+	int mode;
+	const char *modename;
+	const char *filename;
+
+	const char *trim;
+
+	int screen;
+	int desktop;
+	const char *output;
+} wp_match_t;
+
 extern int	 has_randr;
 extern int	 show_debug;
 
 void		 debug(const char *, ...);
-void		 free_outputs(wp_output_t *);
-wp_output_t	*get_output(wp_output_t *, char *);
 wp_output_t	*get_outputs(xcb_connection_t *, xcb_screen_t *);
 pixman_image_t	*load_jpeg(FILE *);
 pixman_image_t	*load_png(FILE *);
 pixman_image_t	*load_xpm(xcb_connection_t *, xcb_screen_t *, FILE *);
-wp_config_t	*parse_config(char **);
+int		 parse_box(const char *s, wp_box_t *box);
+wp_match_t	 option_match_wallpaper(wp_argcv_t argcv,
+			int screen, int desktop, const char *output);
+wp_config_t	 parse_config(int argc, char **argv);
 void		 stage1_sandbox(void);
 void		 stage2_sandbox(void);
 void		*xmalloc(size_t);
+
+int source_option(wp_argcv_t argcv);
+int target_option(wp_argcv_t argcv);
+int has_daemon_option(wp_argcv_t argcv);
+int has_desktop_option(wp_argcv_t argcv);

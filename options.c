@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2025 Tobias Stoeckmann <tobias@stoeckmann.org>
+ * Copyright (c) 2026 Fredrik Noring
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -14,12 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <sys/types.h>
-#include <sys/stat.h>
-
-#include <err.h>
 #include <limits.h>
-#include <pixman.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,124 +24,91 @@
 #include "config.h"
 #include "functions.h"
 
-static size_t
-add_buffer(wp_buffer_t **bufs, size_t *count, wp_buffer_t buf)
-{
-	size_t i;
+enum {
+#define OPTION_ARG_ENUM(name_, arg_, desc_) OPTION_ARG_##name_,
+OPTIONS(OPTION_ARG_ENUM)
+};
 
-	for (i = 0; i < *count; i++)
-		if ((*bufs)[i].st_dev == buf.st_dev &&
-		    (*bufs)[i].st_ino == buf.st_ino)
-			break;
+struct optarg;
 
-	if (*count != 0 && i != *count)
-		fclose(buf.fp);
-	else {
-		*bufs = realloc(*bufs, (*count + 1) * sizeof(**bufs));
-		if (*bufs == NULL)
-			err(1, "failed to allocate memory");
-		(*bufs)[(*count)++] = buf;
-	}
+static void optparse_string(struct optarg *oa);
+static void optparse_number(struct optarg *oa);
 
-	return i;
-}
+#define optparse_file		optparse_string
+#define optparse_output		optparse_string
+#define optparse_geometry	optparse_string
+
+#include "argparse.h"
 
 static void
-add_option(wp_config_t *config, wp_option_t option)
-{
-	size_t i;
-	wp_option_t *o;
-
-	if (option.filename == NULL)
-		return;
-
-	for (i = 0; i < config->count; i++)
-		if (config->options[i].output != NULL &&
-		    strcmp(config->options[i].output, option.output) == 0 &&
-		    config->options[i].screen == option.screen)
-			break;
-
-	if (i != config->count)
-		o = config->options + i;
-	else {
-		config->options = realloc(config->options,
-		    (config->count + 2) * sizeof(*config->options));
-		if (config->options == NULL)
-			err(1, "failed to allocate memory");
-		o = &config->options[config->count++];
-		config->options[config->count].filename = NULL;
-	}
-	*o = option;
-}
-
-static void
-init_buffers(wp_config_t *config)
-{
-	wp_buffer_t *buffers, buffer;
-	size_t buffers_count, i, len;
-	size_t *refs;
-
-	if (config->count == 0)
-		return;
-
-	SAFE_MUL(len, config->count, sizeof(*refs));
-	refs = xmalloc(len);
-
-	buffers = NULL;
-	buffers_count = 0;
-	buffer = (wp_buffer_t){ 0 };
-
-	for (i = 0; i < config->count; i++) {
-		struct stat st;
-
-		if ((buffer.fp = fopen(config->options[i].filename, "rb"))
-		    == NULL)
-			err(1, "open '%s' failed", config->options[i].filename);
-		if (fstat(fileno(buffer.fp), &st))
-			err(1, "stat '%s' failed", config->options[i].filename);
-		buffer.st_dev = st.st_dev;
-		buffer.st_ino = st.st_ino;
-
-		refs[i] = add_buffer(&buffers, &buffers_count, buffer);
-	}
-
-	for (i = 0; i < config->count; i++)
-		config->options[i].buffer = &buffers[refs[i]];
-	free(refs);
-}
-
-static int
-parse_mode(char *mode)
-{
-	if (strcmp(mode, "--center") == 0)
-		return MODE_CENTER;
-	if (strcmp(mode, "--focus") == 0)
-		return MODE_FOCUS;
-	if (strcmp(mode, "--maximize") == 0)
-		return MODE_MAXIMIZE;
-	if (strcmp(mode, "--stretch") == 0)
-		return MODE_STRETCH;
-	if (strcmp(mode, "--tile") == 0)
-		return MODE_TILE;
-	if (strcmp(mode, "--zoom") == 0)
-		return MODE_ZOOM;
-	return -1;
-}
-
-static int
-parse_int(char *string)
+optparse_number(struct optarg *oa)
 {
 	char *endptr;
 	long value;
 
-	value = strtol(string, &endptr, 10);
-	if (endptr == string || *endptr != '\0' || value < 0 || value > INT_MAX)
-		errx(1, "failed to parse screen number: %s", string);
-	return value;
+	optparse_string(oa);
+
+	if (oa->error)
+		return;
+
+	if (strcmp(oa->string, "all") == 0) {
+		oa->integer = -1;	/* "all" is a special keyword for -1 */
+		return;
+	}
+
+	value = strtol(oa->string, &endptr, 10);
+
+	if (endptr == oa->string || *endptr != '\0' ||
+			value < 0 || value > INT_MAX)
+		oa->error = OPTION_NOTNUMBER;
+
+	oa->integer = value;
 }
 
-static int
-parse_box(char *s, wp_box_t **box)
+#define OPTION_PREDICATE(name_)						\
+	int has_##name_##_option(wp_argcv_t argcv)			\
+	{								\
+		for_each_option (argcv)					\
+			if (option_label == OPTION_##name_)		\
+				return 1;				\
+		return 0;						\
+	}
+
+OPTION_PREDICATE(help)
+OPTION_PREDICATE(clear)
+OPTION_PREDICATE(daemon)
+OPTION_PREDICATE(debug)
+OPTION_PREDICATE(no_atoms)
+OPTION_PREDICATE(no_randr)
+OPTION_PREDICATE(no_root)
+OPTION_PREDICATE(version)
+OPTION_PREDICATE(test)
+
+int
+source_option(wp_argcv_t argcv)
+{
+	return !has_clear_option(argcv) && !has_no_atoms_option(argcv);
+}
+
+int
+target_option(wp_argcv_t argcv)
+{
+	return (!has_no_atoms_option(argcv) ? TARGET_ATOMS : 0) |
+	       (!has_no_root_option(argcv)  ? TARGET_ROOT  : 0);
+}
+
+int
+has_desktop_option(wp_argcv_t argcv)
+{
+	for_each_option (argcv)
+		if (option_label == OPTION_desktop)
+			return 1;
+
+	return 0;
+}
+
+int
+parse_box(const char *s, wp_box_t *box)
 {
 	wp_box_t b;
 
@@ -158,125 +121,175 @@ parse_box(char *s, wp_box_t **box)
 	case 4:
 		break;
 	default:
-		return 1;
+		return 0;
 		/* NOTREACHED */
 	}
 
 	if (UINT16_MAX - b.width < b.x_off ||
 	    UINT16_MAX - b.height < b.y_off ||
 	    b.width == 0 || b.height == 0)
-		return 1;
+		return 0;
 
-	*box = xmalloc(sizeof(*box));
-	**box = b;
+	*box = b;
 
-	return 0;
+	return 1;
 }
 
-wp_config_t *
-parse_config(char **argv)
+static
+int screen_desktop_output_match(wp_match_t m,
+	int screen, int desktop, const char *output)
 {
-	wp_config_t *config;
-	wp_option_t last;
+	/* -1 acts as a match "all" wildcard for screen and desktop */
 
-	config = xmalloc(sizeof(*config));
-	*config = (wp_config_t){
-		.options = NULL,
-		.count = 0,
-		.daemon = 0,
-		.source = SOURCE_ATOMS,
-		.target = TARGET_ATOMS | TARGET_ROOT
+	if (m.screen >= 0 && screen >= 0 && m.screen != screen)
+		return 0;
+
+	if (m.desktop >= 0 && desktop >= 0 && m.desktop != desktop)
+		return 0;
+
+	if (strcmp(m.output, "all") == 0 || strcmp(output, "all") == 0)
+		return 1;
+
+	return strcmp(m.output, output) == 0;
+}
+
+wp_match_t
+option_match_wallpaper(wp_argcv_t argcv,
+	int screen, int desktop, const char *output)
+{
+	wp_match_t m = {
+		.screen = -1,
+		.desktop = -1,
+		.output = "all",
 	};
+	wp_match_t best = m;
 
-	last = (wp_option_t){ .screen = -1 };
+	for_each_option (argcv)
+		switch (option_label) {
+		case OPTION_center:
+		case OPTION_focus:
+		case OPTION_maximize:
+		case OPTION_stretch:
+		case OPTION_tile:
+		case OPTION_zoom:
+			m.mode = option_label;
+			m.modename = &option_name[2];
+			m.filename = option_string;
 
-	while (*argv != NULL) {
-		if (strcmp(argv[0], "--daemon") == 0) {
-			config->daemon = 1;
-		} else if (strcmp(argv[0], "--debug") == 0)
-			show_debug = 1;
-		else if (strcmp(argv[0], "--clear") == 0)
-			config->source = 0;
-		else if (strcmp(argv[0], "--no-atoms") == 0) {
-			config->target &= ~TARGET_ATOMS;
-			if (config->target == 0) {
-				warnx("--no-atoms conflicts with --no-root");
-				return NULL;
-			}
-		} else if (strcmp(argv[0], "--no-root") == 0) {
-			config->target &= ~TARGET_ROOT;
-			if (config->target == 0) {
-				warnx("--no-root conflicts with --no-atoms");
-				return NULL;
-			}
-		} else if (strcmp(argv[0], "--screen") == 0) {
-			if (*++argv == NULL) {
-				warnx("missing argument for --screen");
-				return NULL;
-			}
-			add_option(config, last);
-			last.filename = NULL;
-			last.mode = 0;
-			last.output = NULL;
-			last.screen = parse_int(*argv);
-			last.trim = NULL;
-		} else if (strcmp(argv[0], "--output") == 0) {
-			if (*++argv == NULL) {
-				warnx("missing argument for --output");
-				return NULL;
-			}
-			if (has_randr == 0) {
-				warnx("--output requires RandR");
-				return NULL;
-			}
-			add_option(config, last);
-			last.filename = NULL;
-			last.mode = 0;
-			last.output = *argv;
-			last.trim = NULL;
-		} else if ((last.mode = parse_mode(*argv)) != -1) {
-			if (*++argv == NULL) {
-				warnx("missing argument for %s", *(argv - 1));
-				return NULL;
-			}
-			last.filename = *argv;
-		} else if (strcmp(argv[0], "--no-randr") == 0) {
-			if (config->count > 0) {
-				warnx("--no-randr conflicts with --output");
-				return NULL;
-			}
-			has_randr = 0;
-		} else if (strcmp(argv[0], "--trim") == 0) {
-			if (*++argv == NULL) {
-				warnx("missing argument for --trim");
-				return NULL;
-			}
-			last.filename = NULL;
-			last.mode = 0;
-			if (parse_box(*argv, &last.trim)) {
-				warnx("invalid trim box: %s\n", *argv);
-				return NULL;
-			}
-		} else if (strcmp(argv[0], "--version") == 0) {
-			puts(VERSION);
-			exit(0);
-		} else {
-			warnx("illegal argument: %s", *argv);
-			return NULL;
+			if (screen_desktop_output_match(m,
+					screen, desktop, output))
+				best = m;
+			break;
+
+		case OPTION_trim:
+			m.trim = option_string;
+			break;
+
+		case OPTION_screen:
+			m.trim = NULL;
+			m.screen = option_integer;
+			m.desktop = -1;
+			m.output = "all";
+			break;
+
+		case OPTION_desktop:
+			m.trim = NULL;
+			m.desktop = option_integer;
+			m.output = "all";
+			break;
+
+		case OPTION_output:
+			m.trim = NULL;
+			m.output = option_string;
+			break;
 		}
-		++argv;
+
+	return best;
+}
+
+static void
+option_verify(wp_argcv_t argcv)
+{
+	for_each_option (argcv)
+		switch (option_error) {
+		case OPTION_OK:
+			continue;
+		case OPTION_INVALID:
+			errx(EXIT_FAILURE, "invalid option: %s\n"
+				"Try the '--help' option for usage.\n",
+				option_name);
+		case OPTION_MISSING:
+			errx(EXIT_FAILURE, "%s: missing argument, expected <%s>\n"
+				"Try the '--help' option for usage.\n",
+				option_name, option_expect);
+		case OPTION_NOTNUMBER:
+			errx(EXIT_FAILURE, "%s: argument not a number: %s\n"
+				"Try the '--help' option for usage.\n",
+				option_name, option_string);
+		default:
+			errx(EXIT_FAILURE, "unknown error\n");
+		}
+
+	if (has_daemon_option(argcv) && !has_randr)
+		errx(EXIT_FAILURE, "--daemon requires RandR\n");
+}
+
+static void
+test(wp_argcv_t argcv)
+{
+	const char *outputs[] = { "DP", "HDMI", "VGA", NULL };
+
+        for (int screen = 0; screen <= 2; screen++)
+        for (int desktop = 0; desktop <= 4; desktop++)
+        for (int output = 0; outputs[output]; output++) {
+                const wp_match_t m = option_match_wallpaper(argcv,
+			screen, desktop, outputs[output]);
+
+                if (!m.filename)
+			continue;
+
+		printf("screen %d desktop %d output %-4s mode %-8s wallpaper %s\n",
+			screen, desktop, outputs[output], m.modename, m.filename);
+        }
+
+	exit(EXIT_SUCCESS);
+}
+
+static void
+help(void)
+{
+	printf("usage: xwallpaper [options]...\n\noptions:\n\n");
+
+#define OPTION_HELP(name_, arg_, desc_)					\
+	if (strcmp(#arg_, "void") == 0)					\
+		printf("  %-21s  %s\n", opt(#name_).s, desc_);		\
+	else								\
+		printf("  %-10s %-10s  %s\n", opt(#name_).s, "<"#arg_">", desc_);
+OPTIONS(OPTION_HELP)
+
+	exit(EXIT_SUCCESS);
+}
+
+wp_config_t
+parse_config(int argc, char **argv)
+{
+	wp_argcv_t argcv = { .c = argc, .v = argv };
+
+	if (has_help_option(argcv))
+		help();
+
+	if (has_version_option(argcv)) {
+		puts(VERSION);
+		exit(EXIT_SUCCESS);
 	}
-	if (has_randr == -1 && last.output == NULL)
-		last.output = "all";
-	add_option(config, last);
 
-	if (!(config->target & TARGET_ATOMS))
-		config->source = 0;
+	if (has_no_randr_option(argcv))
+		has_randr = 0;
 
-	if (config->count == 0 && config->source != 0)
-		return NULL;
+	option_verify(argcv);
 
-	init_buffers(config);
+	if (has_test_option(argcv))
+		test(argcv);
 
-	return config;
+	return (wp_config_t) { .argcv = argcv };
 }

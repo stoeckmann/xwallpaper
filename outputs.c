@@ -34,33 +34,6 @@ int has_randr = -1;
 int has_randr = 0;
 #endif /* WITH_RANDR */
 
-void
-free_outputs(wp_output_t *outputs)
-{
-	wp_output_t *output;
-
-	for (output = outputs; output->name != NULL; output++)
-		free(output->name);
-	free(outputs);
-}
-
-wp_output_t *
-get_output(wp_output_t *outputs, char *name)
-{
-	wp_output_t *output;
-
-	for (output = outputs; output->name != NULL; output++)
-		if (name != NULL && strcmp(output->name, name) == 0)
-			return output;
-
-	if (name != NULL) {
-		warnx("output %s was not found/disconnected, ignoring", name);
-		return NULL;
-	}
-
-	return output;
-}
-
 #ifdef WITH_RANDR
 static int
 check_randr(xcb_connection_t *c)
